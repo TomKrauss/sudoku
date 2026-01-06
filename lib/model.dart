@@ -292,10 +292,13 @@ class Matrix {
     return candidate;
   }
 
+  ///
+  /// The size of the Sudoku Grid used - typically 9.
+  ///
   int get gridCount => cells.length;
 
   ///
-  /// Solve a Sudoku game using back-tracking.
+  /// Solve a Sudoku game using back-tracking. Pretty trivial algorithm with few optimizations.
   /// 
   Matrix? solve([int level = 0]) {
     resolveDeterministicCases();
