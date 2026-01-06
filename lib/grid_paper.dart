@@ -57,7 +57,7 @@ class CustomGridPaper extends StatelessWidget {
   /// Creates a widget that draws a rectilinear grid of 1-pixel-wide lines.
   const CustomGridPaper({
     super.key,
-    this.color = const Color(0x7FC3E8F3),
+    this.color = Colors.black,
     this.interval = 100.0,
     this.divisions = 2,
     this.subdivisions = 5,
