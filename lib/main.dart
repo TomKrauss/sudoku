@@ -92,12 +92,6 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   static Matrix sampleMatrix() => Games().games.first;
 
-  @override
-  void initState() {
-    super.initState();
-    Games().readHistory();
-  }
-
   void initWithSample() {
     setState(() {
       m = sampleMatrix();
@@ -105,9 +99,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
     });
   }
 
-  void clear() {
+  void newGame() {
     setState(() {
-      m = Matrix.empty();
+      if (!m.isEmpty) {
+        m = Games().newGame();
+      }
       editing = true;
     });
   }
@@ -124,6 +120,13 @@ class _SudokuBoardState extends State<SudokuBoard> {
         editing = true;
       }
     });
+  }
+
+  ///
+  /// Save the list of current games known
+  ///
+  void save() {
+    Games().save();
   }
 
   void solve() {
@@ -210,8 +213,9 @@ class _SudokuBoardState extends State<SudokuBoard> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               ElevatedButton(onPressed: solve, child: Text("Solve")),
-              ElevatedButton(onPressed: clear, child: Text("Clear")),
+              ElevatedButton(onPressed: newGame, child: Text("New")),
               ElevatedButton(onPressed: edit, child: Text("Edit")),
+              ElevatedButton(onPressed: save, child: Text("Save")),
               ElevatedButton(onPressed: initWithSample, child: Text("Sample")),
             ],
           ),

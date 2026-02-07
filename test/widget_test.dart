@@ -5,12 +5,16 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+
+import 'dart:ui';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sudoku/main.dart';
 
 void main() {
   testWidgets('Sudoko Application smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
+    await tester.binding.setSurfaceSize(const Size(1020, 1020));
     await tester.pumpWidget(const SudokuApplication());
 
     var solve = find.text('Solve');

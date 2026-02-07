@@ -15,13 +15,14 @@ class _GridPaperPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final thick = 2.0;
     final Paint linePaint = Paint()..color = color;
     linePaint.strokeCap = StrokeCap.round;
     final double allDivisions = (divisions * subdivisions).toDouble();
     for (double x = 0.0; x <= size.width; x += interval / allDivisions) {
       linePaint.strokeWidth =
       (x % interval == 0.0)
-          ? 2
+          ? thick
           : (x % (interval / subdivisions) == 0.0)
           ? 1.5
           : 0.5;
@@ -30,11 +31,11 @@ class _GridPaperPainter extends CustomPainter {
     for (double y = 0.0; y <= size.height; y += interval / allDivisions) {
       linePaint.strokeWidth =
       (y % interval == 0.0)
-          ? 2
+          ? thick
           : (y % (interval / subdivisions) == 0.0)
           ? 1.5
           : 0.5;
-      canvas.drawLine(Offset(0.0, y), Offset(size.width, y), linePaint);
+      canvas.drawLine(Offset(0.0, y+linePaint.strokeWidth/2), Offset(size.width, y), linePaint);
     }
   }
 

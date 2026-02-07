@@ -1,9 +1,11 @@
-
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:logger/logger.dart';
+
 extension ListExtension<T> on List<T> {
-  List<T> getDuplicates() => where((x) => where((y) => x == y).length > 1).toList();
+  List<T> getDuplicates() =>
+      where((x) => where((y) => x == y).length > 1).toList();
 }
 
 ///
@@ -21,9 +23,12 @@ class Cell {
 }
 
 ///
-/// The games defined in our little application.
+/// The games defined in our Sudoku application.
 ///
 class Games {
+  static Logger logger = Logger(
+    printer: PrettyPrinter(stackTraceBeginIndex: 10000),
+  );
   Games._() {
     initialize();
   }
@@ -33,46 +38,79 @@ class Games {
   final List<Matrix> games = [];
 
   void addGame(Matrix matrix) {
-    matrix.name ??= "Game ${games.length+1}";
+    matrix.name ??= "Game ${DateTime.now().toIso8601String()}";
     games.removeWhere(((g) => g.name == matrix.name));
     games.add(matrix);
   }
 
   void initialize() {
-    addGame(Matrix.from([
-      [null, 3, null, null, null, null, null, null, null],
-      [null, null, null, 1, 9, 5, null, null, null],
-      [null, null, 8, null, null, null, null, 6, null],
-      [ 8, null, null, null, 6, null, null, null, null],
-      [ 4, null, null, 8, null, null, null, null, 1],
-      [null, null, null, null, 2, null, null, null, null],
-      [null, 6, null, null, null, null, 2, 8, null],
-      [null, null, null, 4, 1, 9, null, null, 5],
-      [null, null, null, null, null, null, null, 7, null],
-    ]));
+    addGame(
+      Matrix.from([
+        [null, 3, null, null, null, null, null, null, null],
+        [null, null, null, 1, 9, 5, null, null, null],
+        [null, null, 8, null, null, null, null, 6, null],
+        [8, null, null, null, 6, null, null, null, null],
+        [4, null, null, 8, null, null, null, null, 1],
+        [null, null, null, null, 2, null, null, null, null],
+        [null, 6, null, null, null, null, 2, 8, null],
+        [null, null, null, 4, 1, 9, null, null, 5],
+        [null, null, null, null, null, null, null, 7, null],
+      ]),
+    );
     readHistory();
   }
 
+  String asJson() {
+    final output = {"games": games.map((g) => g.asJson()).toList()};
+    return jsonEncode(output);
+  }
+
   void save() {
-    final output = {
-      "games": games.map((g) => g.asJson()).toList()
-    };
+    logger.i("Saving list of current games to file $historyFile");
     final file = File(historyFile);
-    file.writeAsStringSync(jsonEncode(output));
+    file.writeAsStringSync(asJson());
+  }
+
+  List<Matrix> decodeGames(String gamesEncodedAsJson) {
+    final contents = jsonDecode(gamesEncodedAsJson);
+    final games = contents["games"];
+    final result = <Matrix>[];
+    if (games is List) {
+      for (final g in games) {
+        result.add(Matrix.from(g["cells"], name: g["name"]));
+      }
+    }
+    return result;
   }
 
   void readHistory() {
     final file = File(historyFile);
     if (!file.existsSync()) {
+      logger.i("No history file found");
       return;
     }
-    final contents = jsonDecode(file.readAsStringSync());
-    final games = contents["games"];
-    if (games is List) {
-      for (final g in games) {
-        addGame(Matrix.from(g));
-      }
+    var games = decodeGames(file.readAsStringSync());
+    logger.i("Reading history file with ${games.length} saved games.");
+    for (final matrix in games) {
+      addGame(matrix);
     }
+  }
+
+  ///
+  /// Create a new game and add it to the list of games.
+  ///
+  Matrix newGame({String? name}) {
+    var m = Matrix.empty();
+    m.name = name;
+    addGame(m);
+    return m;
+  }
+
+  ///
+  /// Clear the list of saved games
+  ///
+  void clear() {
+    games.clear();
   }
 }
 
@@ -85,7 +123,7 @@ class Matrix {
 
   int get rowCount => cells.length;
 
-  static Matrix? fromJson(Map<String,dynamic> json) {
+  static Matrix? fromJson(Map<String, dynamic> json) {
     var name = json["name"];
     var cells = json["cells"];
     if (cells is! List) {
@@ -115,9 +153,10 @@ class Matrix {
     }
   }
 
-  static Matrix from(List<List<int?>> init, {String? name}) {
+  static Matrix from(List<dynamic> init, {String? name}) {
     var result = Matrix.empty();
-    result.place(init);
+    var list = init.map((l) => List<int?>.from(l)).toList();
+    result.place(list);
     result.name = name;
     return result;
   }
@@ -139,7 +178,9 @@ class Matrix {
 
   Map<String, dynamic> asJson() => {
     "name": name,
-    "cells": cells.map((row) => row.map((cell) => cell.value))
+    "cells": cells
+        .map((row) => row.map((cell) => cell.value).toList())
+        .toList(),
   };
 
   void clearGuesses() {
@@ -150,8 +191,11 @@ class Matrix {
       }
     });
   }
-  List<int> rowValues(int row) => cells[row].map((c) => c.value).nonNulls.toList();
-  List<int> colValues(int col) => cells.map((c) => c[col]).map((c) => c.value).nonNulls.toList();
+
+  List<int> rowValues(int row) =>
+      cells[row].map((c) => c.value).nonNulls.toList();
+  List<int> colValues(int col) =>
+      cells.map((c) => c[col]).map((c) => c.value).nonNulls.toList();
   List<Cell> blockCells(int row, int col) {
     var result = <Cell>[];
     for (int r = row ~/ 3 * 3; r < row ~/ 3 * 3 + 3; r++) {
@@ -162,12 +206,13 @@ class Matrix {
     return result;
   }
 
-  List<int> blockValues(int row, int col) => blockCells(row, col).map((c) => c.value).nonNulls.toList();
+  List<int> blockValues(int row, int col) =>
+      blockCells(row, col).map((c) => c.value).nonNulls.toList();
 
   void cellsDo(void Function(Cell cell, int row, int column) f) {
     for (int r = 0; r < cells.length; r++) {
       for (int c = 0; c < cells[r].length; c++) {
-          f(cells[r][c], r, c);
+        f(cells[r][c], r, c);
       }
     }
   }
@@ -209,13 +254,13 @@ class Matrix {
         }
       }
     }
-    for (int r = 0; r < cells.length; r+=3) {
-      for (int c = 0; c < cells[0].length; c+=3) {
+    for (int r = 0; r < cells.length; r += 3) {
+      for (int c = 0; c < cells[0].length; c += 3) {
         var v = blockValues(r, c);
         var duplicates = v.getDuplicates();
         if (duplicates.isNotEmpty) {
           valid = false;
-          for (final cell in blockCells(r,c)) {
+          for (final cell in blockCells(r, c)) {
             if (duplicates.contains(cell.value)) {
               cell.hasError = true;
             }
@@ -231,8 +276,12 @@ class Matrix {
       cells[row][col].alternatives = [];
       return;
     }
-    var selected = [...rowValues(row), ...colValues(col), ...blockValues(row, col)];
-    final a = List<int>.generate(9, (index) => index+1).toSet();
+    var selected = [
+      ...rowValues(row),
+      ...colValues(col),
+      ...blockValues(row, col),
+    ];
+    final a = List<int>.generate(9, (index) => index + 1).toSet();
     a.removeAll(selected);
     cells[row][col].alternatives = a.toList();
   }
@@ -242,7 +291,7 @@ class Matrix {
   ///
   void resolveDeterministicCases() {
     bool resolved = true;
-    while(resolved) {
+    while (resolved) {
       resolved = false;
       cellsDo((cell, _, _) {
         if (cell.alternatives.length == 1) {
@@ -261,7 +310,7 @@ class Matrix {
     if (originalCell.alternatives.isEmpty) {
       return null;
     }
-    if (tryNext == null || tryNext < originalCell.alternatives.length-1) {
+    if (tryNext == null || tryNext < originalCell.alternatives.length - 1) {
       tryNext = tryNext == null ? 0 : tryNext + 1;
       cells[row][column].trying = tryNext;
       var copy = Matrix.clone(this);
@@ -298,8 +347,13 @@ class Matrix {
   int get gridCount => cells.length;
 
   ///
+  /// Answer true if a matrix is empty.
+  ///
+  bool get isEmpty => !cells.any((r) => r.any((c) => c.value != null));
+
+  ///
   /// Solve a Sudoku game using back-tracking. Pretty trivial algorithm with few optimizations.
-  /// 
+  ///
   Matrix? solve([int level = 0]) {
     resolveDeterministicCases();
     if (solved) {
@@ -312,12 +366,12 @@ class Matrix {
     if (cellPos == null) {
       return null;
     }
-    while(checkValid) {
+    while (checkValid) {
       var m = tryNextAlternative(row: cellPos.row, column: cellPos.column);
       if (m == null) {
         return null;
       }
-      var done = m.solve(level+1);
+      var done = m.solve(level + 1);
       if (done != null) {
         return done;
       }
