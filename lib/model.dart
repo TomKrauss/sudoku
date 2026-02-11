@@ -37,6 +37,8 @@ class Games {
   final String historyFile = "sudoku.json";
   final List<Matrix> games = [];
 
+  int get numberOfGames => games.length;
+
   void addGame(Matrix matrix) {
     matrix.name ??= "Game ${DateTime.now().toIso8601String()}";
     games.removeWhere(((g) => g.name == matrix.name));

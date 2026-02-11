@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sudoku/grid_paper.dart';
+import 'package:sudoku/input_dialogs.dart';
 import 'package:sudoku/model.dart';
 
 double cellSize = 50;
@@ -99,10 +100,16 @@ class _SudokuBoardState extends State<SudokuBoard> {
     });
   }
 
-  void newGame() {
+  void newGame() async {
+    var games = Games();
+    var name = await showInputPrompt(context, promptText: "Enter the name of the new game",
+        title: "New Game", initialValue: "Game #${games.numberOfGames+1}");
+    if (name == null) {
+      return;
+    }
     setState(() {
       if (!m.isEmpty) {
-        m = Games().newGame();
+        m = Games().newGame(name: name);
       }
       editing = true;
     });
