@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:logger/logger.dart';
 
@@ -142,7 +143,25 @@ class Matrix {
   String? name;
   List<List<Cell>> cells = [];
 
+  ///
+  /// Returns the placement of a cell in our matrix in form of
+  /// a point with y being the row and x being the column.
+  ///
+  Point<int> placementOf(Cell cell) {
+    for (var i = 0; i < cells.length; i++) {
+      var row = cells[i];
+      for (var j = 0; j < row.length; j++) {
+        if (cell == row[j]) {
+          return Point(j, i);
+        }
+      }
+    }
+    return Point(-1,-1);
+  }
+
   int get rowCount => cells.length;
+
+  int get columnCount => cells.isEmpty ? 0 : cells[0].length;
 
   @override
   int get hashCode => cells.fold(0, (v, row1) => row1.fold(0, (a,b) => a+(b.value ?? 13)));

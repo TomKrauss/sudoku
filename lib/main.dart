@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sudoku/grid_paper.dart';
@@ -11,14 +13,18 @@ double cellSize = 50;
 ///
 class CellWidget extends StatelessWidget {
   final bool showAlternatives;
-  const CellWidget(this.cell, this.onChanged, {required this.showAlternatives, super.key});
+  final FocusNode focusNode;
+  const CellWidget(this.cell, this.onChanged, {required this.showAlternatives, required this.focusNode, super.key});
   final Cell cell;
   final Function(String? newVal)? onChanged;
 
   Widget get editWidget => TextField(
     style: TextStyle(color: cell.hasError ? Colors.red : Colors.black, fontWeight: FontWeight.bold),
-    decoration: InputDecoration(border: InputBorder.none),
+    decoration: InputDecoration(border: InputBorder.none, counterText: ""),
     textAlign: TextAlign.center,
+    focusNode: focusNode,
+    selectAllOnFocus: true,
+    maxLength: 1,
     controller: TextEditingController(text: "${cell.value ?? ''}"),
     onChanged: onChanged,
     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -87,9 +93,10 @@ class SudokuBoard extends StatefulWidget {
 }
 
 class _SudokuBoardState extends State<SudokuBoard> {
+  final Map<Point<int>, FocusNode> focusNodes = {};
   bool _showAlternatives = false;
   final games = Games();
-  Matrix get m => games.current;
+  Matrix get model => games.current;
   bool editing = false;
 
   void initWithSample() {
@@ -99,6 +106,19 @@ class _SudokuBoardState extends State<SudokuBoard> {
     });
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+    for (final n in focusNodes.values) {
+      n.dispose();
+    }
+    focusNodes.clear();
+  }
+
+  ///
+  /// Returns the focus node for a given cell in a matrix
+  ///
+  FocusNode forCell(Point<int> cell) => focusNodes.putIfAbsent(cell, () => FocusNode());
 
   ///
   /// Load a game from the list of games available.
@@ -119,7 +139,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
       return;
     }
     setState(() {
-      if (!m.isEmpty) {
+      if (!model.isEmpty) {
         games.newGame(name: name);
       }
       editing = true;
@@ -129,12 +149,12 @@ class _SudokuBoardState extends State<SudokuBoard> {
   void edit() {
     setState(() {
       if (editing) {
-        m.clearGuesses();
-        m.recalculateAlternatives();
-        m.checkValid;
+        model.clearGuesses();
+        model.recalculateAlternatives();
+        model.checkValid;
         editing = false;
       } else {
-        m.clearGuesses();
+        model.clearGuesses();
         editing = true;
       }
     });
@@ -150,7 +170,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   void solve() {
     setState(() {
       editing = false;
-      var solved = m.solve();
+      var solved = model.solve();
       if (solved != null) {
         games.current = solved;
       } else {
@@ -164,9 +184,40 @@ class _SudokuBoardState extends State<SudokuBoard> {
   void recalculateAlternatives() {
     if (_showAlternatives) {
       setState(() {
-        m.recalculateAlternatives();
-        m.checkValid;
+        model.recalculateAlternatives();
+        model.checkValid;
       });
+    }
+  }
+
+  ///
+  /// Move the focus to the next cell with a given delta in cell positions from the current
+  /// game cell. It is assumed, that are ordered from left top to bottom right.
+  ///
+  void moveCellFocusBy(int delta) {
+    final rowLength = model.columnCount;
+    for (final entry in focusNodes.entries) {
+      if (entry.value.hasFocus) {
+        var p = entry.key;
+        var newX = p.x+delta;
+        var newY = p.y;
+        while (newX < 0) {
+          newX += rowLength;
+          newY --;
+        }
+        while (newX >= rowLength) {
+          newX -= rowLength;
+          newY ++;
+        }
+        while(newY < 0) {
+          newY += model.rowCount;
+        }
+        while(newY >= model.rowCount) {
+          newY -= model.rowCount;
+        }
+        var cell = forCell(Point(newX, newY));
+        cell.requestFocus();
+      }
     }
   }
 
@@ -177,14 +228,29 @@ class _SudokuBoardState extends State<SudokuBoard> {
       body: Column(
         children: [
           Center(
-            child: CustomGridPaper(
+            child: CallbackShortcuts(
+              bindings: <ShortcutActivator, VoidCallback>{
+                const SingleActivator(LogicalKeyboardKey.arrowUp): () {
+                  moveCellFocusBy(-games.current.columnCount);
+                },
+                const SingleActivator(LogicalKeyboardKey.arrowDown): () {
+                  moveCellFocusBy(games.current.columnCount);
+                },
+                const SingleActivator(LogicalKeyboardKey.arrowRight): () {
+                  moveCellFocusBy(1);
+                },
+                const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
+                  moveCellFocusBy(-1);
+                },
+              },
+              child: CustomGridPaper(
               divisions: 3,
               subdivisions: 3,
-              interval: m.gridCount * cellSize,
+              interval: model.gridCount * cellSize,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: m.cells
+                children: model.cells
                     .map(
                       (l) => Row(
                         mainAxisSize: MainAxisSize.min,
@@ -198,6 +264,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
                                         recalculateAlternatives();
                                       }
                                     : null,
+                                focusNode: forCell(model.placementOf(c)),
                                 showAlternatives: _showAlternatives,
                               ),
                             )
@@ -207,7 +274,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
                     .toList(),
               ),
             ),
-          ),
+          )),
           SizedBox(height: 20),
           Divider(),
           Row(
