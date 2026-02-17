@@ -88,20 +88,31 @@ class SudokuBoard extends StatefulWidget {
 
 class _SudokuBoardState extends State<SudokuBoard> {
   bool _showAlternatives = false;
-  Matrix m = sampleMatrix();
+  final games = Games();
+  Matrix get m => games.current;
   bool editing = false;
-
-  static Matrix sampleMatrix() => Games().games.first;
 
   void initWithSample() {
     setState(() {
-      m = sampleMatrix();
+      games.useSample();
       editing = false;
     });
   }
 
+
+  ///
+  /// Load a game from the list of games available.
+  ///
+  Future<void> loadGame() async {
+    final gameName = await selectGame(context);
+    if (gameName != null) {
+      setState(() {
+        games.load(gameName);
+      });
+    }
+  }
+
   void newGame() async {
-    var games = Games();
     var name = await showInputPrompt(context, promptText: "Enter the name of the new game",
         title: "New Game", initialValue: "Game #${games.numberOfGames+1}");
     if (name == null) {
@@ -109,7 +120,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
     }
     setState(() {
       if (!m.isEmpty) {
-        m = Games().newGame(name: name);
+        games.newGame(name: name);
       }
       editing = true;
     });
@@ -133,7 +144,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   /// Save the list of current games known
   ///
   void save() {
-    Games().save();
+    games.save();
   }
 
   void solve() {
@@ -141,7 +152,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
       editing = false;
       var solved = m.solve();
       if (solved != null) {
-        m = solved;
+        games.current = solved;
       } else {
         ScaffoldMessenger.of(
           context,
@@ -223,6 +234,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
               ElevatedButton(onPressed: newGame, child: Text("New")),
               ElevatedButton(onPressed: edit, child: Text("Edit")),
               ElevatedButton(onPressed: save, child: Text("Save")),
+              ElevatedButton(onPressed: loadGame, child: Text("Load...")),
               ElevatedButton(onPressed: initWithSample, child: Text("Sample")),
             ],
           ),

@@ -1,1 +1,11 @@
-{"games":[{"name":"Game 2026-02-07T13:43:29.058954","cells":[[null,3,null,null,null,null,null,null,null],[null,null,null,1,9,5,null,null,null],[null,null,8,null,null,null,null,6,null],[8,null,null,null,6,null,null,null,null],[4,null,null,8,null,null,null,null,1],[null,null,null,null,2,null,null,null,null],[null,6,null,null,null,null,2,8,null],[null,null,null,4,1,9,null,null,5],[null,null,null,null,null,null,null,7,null]]},{"name":"Game 2026-02-07T13:43:39.136304","cells":[[2,null,5,3,null,8,4,null,9],[null,7,null,null,null,null,null,5,null],[9,null,4,null,null,null,6,null,7],[5,null,null,null,4,null,null,null,2],[null,null,null,5,null,7,null,null,null],[6,null,null,null,3,null,null,null,8],[4,null,6,null,null,null,8,null,1],[null,2,null,null,null,null,null,6,null],[8,null,1,2,null,9,7,null,4]]}]}
+{"games":[
+  { "name":"Demo Game",
+    "cells":[
+      [null,3,null,null,null,null,null,null,null], [null,null,null,1,9,5,null,null,null], [null,null,8,null,null,null,null,6,null],
+      [8,null,null,null,6,null,null,null,null], [4,null,null,8,null,null,null,null,1], [null,null,null,null,2,null,null,null,null],
+      [null,6,null,null,null,null,2,8,null], [null,null,null,4,1,9,null,null,5], [null,null,null,null,null,null,null,7,null]]},
+  { "name":"Recent Game",
+    "cells":[[2,null,5,3,null,8,4,null,9],[null,7,null,null,null,null,null,5,null], [9,null,4,null,null,null,6,null,7],
+      [5,null,null,null,4,null,null,null,2],[null,null,null,5,null,7,null,null,null], [6,null,null,null,3,null,null,null,8],
+      [4,null,6,null,null,null,8,null,1],[null,2,null,null,null,null,null,6,null],[8,null,1,2,null,9,7,null,4]]
+  }]}

@@ -33,33 +33,37 @@ class Games {
     initialize();
   }
   static final Games _singleton = Games._();
+  static final Matrix sample = Matrix.from([
+    [null, 3, null, null, null, null, null, null, null],
+    [null, null, null, 1, 9, 5, null, null, null],
+    [null, null, 8, null, null, null, null, 6, null],
+    [8, null, null, null, 6, null, null, null, null],
+    [4, null, null, 8, null, null, null, null, 1],
+    [null, null, null, null, 2, null, null, null, null],
+    [null, 6, null, null, null, null, 2, 8, null],
+    [null, null, null, 4, 1, 9, null, null, 5],
+    [null, null, null, null, null, null, null, 7, null],
+  ]);
   factory Games() => _singleton;
   final String historyFile = "sudoku.json";
   final List<Matrix> games = [];
+  Matrix current = sample;
 
   int get numberOfGames => games.length;
 
   void addGame(Matrix matrix) {
+    if (games.contains(matrix)) {
+      return;
+    }
     matrix.name ??= "Game ${DateTime.now().toIso8601String()}";
     games.removeWhere(((g) => g.name == matrix.name));
     games.add(matrix);
   }
 
   void initialize() {
-    addGame(
-      Matrix.from([
-        [null, 3, null, null, null, null, null, null, null],
-        [null, null, null, 1, 9, 5, null, null, null],
-        [null, null, 8, null, null, null, null, 6, null],
-        [8, null, null, null, 6, null, null, null, null],
-        [4, null, null, 8, null, null, null, null, 1],
-        [null, null, null, null, 2, null, null, null, null],
-        [null, 6, null, null, null, null, 2, 8, null],
-        [null, null, null, 4, 1, 9, null, null, 5],
-        [null, null, null, null, null, null, null, 7, null],
-      ]),
-    );
     readHistory();
+    addGame(sample);
+    current = games.last;
   }
 
   String asJson() {
@@ -92,7 +96,7 @@ class Games {
       return;
     }
     var games = decodeGames(file.readAsStringSync());
-    logger.i("Reading history file with ${games.length} saved games.");
+    logger.i("Reading history file ${file.absolute.path} with ${games.length} saved games.");
     for (final matrix in games) {
       addGame(matrix);
     }
@@ -101,11 +105,11 @@ class Games {
   ///
   /// Create a new game and add it to the list of games.
   ///
-  Matrix newGame({String? name}) {
+  void newGame({String? name}) {
     var m = Matrix.empty();
     m.name = name;
     addGame(m);
-    return m;
+    current = m;
   }
 
   ///
@@ -113,6 +117,21 @@ class Games {
   ///
   void clear() {
     games.clear();
+  }
+
+  ///
+  /// Load a game given its name. A game with the given name must exist or
+  /// an exception is thrown.
+  ///
+  void load(String name) {
+    var m = games.where((g) => g.name == name).firstOrNull;
+    if (m != null) {
+      current = m;
+    }
+  }
+
+  void useSample() {
+    current = sample;
   }
 }
 
@@ -124,6 +143,32 @@ class Matrix {
   List<List<Cell>> cells = [];
 
   int get rowCount => cells.length;
+
+  @override
+  int get hashCode => cells.fold(0, (v, row1) => row1.fold(0, (a,b) => a+(b.value ?? 13)));
+
+  @override
+  bool operator== (Object other) {
+    if (other is! Matrix) {
+      return false;
+    }
+    if (cells.length != other.cells.length) {
+      return false;
+    }
+    for (var i = 0; i < cells.length; i++) {
+      var row1 = cells[i];
+      var row2 = other.cells[i];
+      if (row2.length != row1.length) {
+        return false;
+      }
+      for (var j = 0; j < row1.length; j++) {
+        if (row1[j].value != row2[j].value) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
 
   static Matrix? fromJson(Map<String, dynamic> json) {
     var name = json["name"];

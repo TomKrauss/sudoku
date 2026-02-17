@@ -2,24 +2,80 @@
 
 
 import 'package:flutter/material.dart';
+import 'package:sudoku/model.dart';
+
+const _defaultDialogTitle = "Sudoku";
 
 ///
-/// Show a dialog box allowing to enter a text to be returned and accept using OK or cancel
-/// out in which case null is returned.
+/// A widget displaying a list of games previously saved or added allowing
+/// to select one of the games.
 ///
-Future<String?> showInputPrompt(BuildContext context, {String title = "Sudoku", required String promptText, String? initialValue}) async {
-  final controller = TextEditingController(text: initialValue);
+class GameSelectorWidget extends StatefulWidget {
+  final ValueNotifier<String?> value;
+  const GameSelectorWidget({required this.value, super.key});
+
+  @override
+  State<GameSelectorWidget> createState() => _GameSelectorWidgetState();
+}
+
+class _GameSelectorWidgetState extends State<GameSelectorWidget> {
+  final games = Games();
+  String? get selection => widget.value.value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(width: 400, height: 300, child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+      Text("Select Game to load"),
+      Flexible(child: ListView(children: games.games.map((g) =>
+        ListTile(title: Text(g.name??""), selected: g.name == selection,
+            selectedTileColor: Theme.of(context).colorScheme.primary,
+            selectedColor: Theme.of(context).colorScheme.onPrimary,
+            onTap: () =>
+        setState(() {
+          widget.value.value = g.name;
+        })
+        )).toList(),))]));
+  }
+}
+
+///
+/// General utility to show a dialog.
+///
+Future<String?> showContentDialog(BuildContext context, {required String title, required Widget content, required String Function() getValue}) async {
   return await showDialog(context: context, builder: (BuildContext context) => AlertDialog(
     title: Text(title),
-    content: Column(mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [Text(promptText), Flexible(child: TextField(controller: controller))]),
+    content: content,
     actions: <Widget>[
       TextButton(
         onPressed: () => Navigator.pop(context, null),
         child: const Text('Cancel'),
       ),
-      TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('OK')),
+      TextButton(onPressed: () => Navigator.pop(context, getValue()), child: const Text('OK')),
     ],
   ),);
+}
+
+///
+/// Show a dialog box allowing to enter a text to be returned and accept using OK or cancel
+/// out in which case null is returned.
+///
+Future<String?> showInputPrompt(BuildContext context, {String title = _defaultDialogTitle, required String promptText, String? initialValue}) async {
+  final controller = TextEditingController(text: initialValue);
+  return showContentDialog(context, title: title, content: Column(mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [Text(promptText), Flexible(child: TextField(controller: controller))]), getValue: () => controller.text);
+}
+
+
+///
+/// Show a dialog allowing to select a game.
+///
+Future<String?> selectGame(BuildContext context, {String title = _defaultDialogTitle}) {
+  final selection = ValueNotifier(Games().current.name ?? "game");
+  final w = GameSelectorWidget(value: selection);
+  return showContentDialog(title: title, context, content: w,
+      getValue: () => selection.value);
 }

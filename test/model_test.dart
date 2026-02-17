@@ -13,6 +13,13 @@ void main() {
       var m = Matrix.empty();
       expect(m.isEmpty, isTrue);
     });
+    test("Comparison", () {
+      var m1 = Matrix.empty();
+      var m2 = Games.sample;
+      expect(m1 == m2, isFalse);
+      m1 = Games.sample;
+      expect(m1 == m2, isTrue);
+    });
     test("Validation", () {
       var m = Matrix.empty();
       m.setValue(0, 0, 1);
@@ -24,7 +31,8 @@ void main() {
     test("JSON Encoding", () {
       final games = Games();
       games.clear();
-      var m = games.newGame(name: "test");
+      games.newGame(name: "test");
+      var m = games.current;
       m.setValue(0, 0, 1);
       var encoded = games.asJson();
       var list = games.decodeGames(encoded);
