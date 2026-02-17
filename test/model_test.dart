@@ -13,6 +13,23 @@ void main() {
       var m = Matrix.empty();
       expect(m.isEmpty, isTrue);
     });
+    test("Parse", () {
+      var m = Matrix.parse(
+          "_ _ _ 8 3 _ _ _ _ "
+          "_ _ _ _ 7 4 _ 5 _ "
+          "_ _ _ _ _ _ _ _ _ "
+          "_ _ 4 _ _ 6 _ _ 8 "
+          "2 _ _ _ 8 _ _ _ 9 "
+          "_ 6 _ 1 _ 2 4 _ _ "
+          "_ _ 5 7 _ _ 9 _ 3 "
+          "9 8 _ _ _ _ _ _ 5 "
+          "_ _ 1 _ 6 5 _ _ 4 "
+      );
+      expect(m.valueAt(1, 4), 7);
+      expect(m.valueAt(7, 0), 9);
+      expect(m.valueAt(8, 8), 4);
+      expect(m.difficultyLevel > 3, true);
+    });
     test("Comparison", () {
       var m1 = Matrix.empty();
       var m2 = Games.sample;

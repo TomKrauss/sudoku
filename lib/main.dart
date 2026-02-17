@@ -170,6 +170,10 @@ class _SudokuBoardState extends State<SudokuBoard> {
   void solve() {
     setState(() {
       editing = false;
+      if (model.solved) {
+        model.clearGuesses();
+        return;
+      }
       var solved = model.solve();
       if (solved != null) {
         games.current = solved;
@@ -223,9 +227,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   @override
   Widget build(BuildContext context) {
+    var buttonStyle = ElevatedButton.styleFrom(minimumSize: Size(150, 35));
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
             child: CallbackShortcuts(
@@ -276,6 +282,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
             ),
           )),
           SizedBox(height: 20),
+          Padding(padding: EdgeInsetsGeometry.all(15),
+              child: Text("Current game: ${model.name}, difficulty level ${model.difficultyLevel}", style: Theme.of(context).textTheme.bodySmall,)),
           Divider(),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -294,15 +302,17 @@ class _SudokuBoardState extends State<SudokuBoard> {
               ),
             ],
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceAround,
+            runSpacing: 10,
+            spacing: 10,
             children: [
-              ElevatedButton(onPressed: solve, child: Text("Solve")),
-              ElevatedButton(onPressed: newGame, child: Text("New")),
-              ElevatedButton(onPressed: edit, child: Text("Edit")),
-              ElevatedButton(onPressed: save, child: Text("Save")),
-              ElevatedButton(onPressed: loadGame, child: Text("Load...")),
-              ElevatedButton(onPressed: initWithSample, child: Text("Sample")),
+              ElevatedButton(onPressed: solve, style: buttonStyle, child: Text(model.solved ? "Clear Hints" : "Solve")),
+              ElevatedButton(onPressed: newGame, style: buttonStyle, child: Text("New")),
+              ElevatedButton(onPressed: edit, style: buttonStyle, child: Text("Edit")),
+              ElevatedButton(onPressed: save, style: buttonStyle, child: Text("Save")),
+              ElevatedButton(onPressed: loadGame, style: buttonStyle, child: Text("Load...")),
+              ElevatedButton(onPressed: initWithSample, style: buttonStyle, child: Text("Sample")),
             ],
           ),
         ],

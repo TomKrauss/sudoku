@@ -49,7 +49,6 @@ class Games {
   final String historyFile = "sudoku.json";
   final List<Matrix> games = [];
   Matrix current = sample;
-
   int get numberOfGames => games.length;
 
   void addGame(Matrix matrix) {
@@ -126,7 +125,8 @@ class Games {
   ///
   void load(String name) {
     var m = games.where((g) => g.name == name).firstOrNull;
-    if (m != null) {
+    if (m != null && m != current) {
+      m.clearGuesses();
       current = m;
     }
   }
@@ -140,8 +140,10 @@ class Games {
 /// Represents one Sudoku game state.
 ///
 class Matrix {
+  static const int defaultSize = 9;
   String? name;
   List<List<Cell>> cells = [];
+  static int _maxLevelToSolve = 0;
 
   ///
   /// Returns the placement of a cell in our matrix in form of
@@ -212,11 +214,32 @@ class Matrix {
     return result;
   }
 
-  Matrix.empty() {
-    for (var row = 0; row < 9; row++) {
-      var rowCells = List.generate(9, (index) => Cell());
+  Matrix.parse(String s, {int? size}) {
+    size ??= defaultSize;
+    _addCells(size);
+    for (int i = 0; i < defaultSize; i++) {
+      for (int j = 0; j < defaultSize; j++) {
+        int idx = i * defaultSize * 2 + (j*2);
+        if (idx >= s.length) {
+          throw Exception("Specified matrix string is not big enough");
+        }
+        var cell = s.substring(idx, idx+1);
+        var value = cell == '_' ? null : int.tryParse(cell);
+        cells[i][j].value = value;
+      }
+    }
+  }
+
+  void _addCells(int size) {
+    for (var row = 0; row < size; row++) {
+      var rowCells = List.generate(size, (index) => Cell());
       cells.add(rowCells);
     }
+  }
+
+  Matrix.empty({int? size}) {
+    size ??= defaultSize;
+    _addCells(size);
   }
 
   static Matrix from(List<dynamic> init, {String? name}) {
@@ -254,6 +277,8 @@ class Matrix {
       if (cell.solved) {
         cell.value = null;
         cell.solved = false;
+        cell.hasError = false;
+        cell.alternatives.clear();
       }
     });
   }
@@ -353,6 +378,34 @@ class Matrix {
   }
 
   ///
+  /// Returns a row of cells. [rowNumber] must lay within the size of the matrix
+  ///
+  List<Cell> rowAt(int rowNumber) => cells[rowNumber];
+  ///
+  /// Returns a column of cells. [columnNumber] must lay within the size of the matrix
+  ///
+  List<Cell> columnAt(int columnNumber) => cells.map((l) => l[columnNumber]).toList();
+
+  ///
+  /// Tries to find rows / columns where only one cell is not resolved.
+  ///
+  bool resolveLine(List<Cell> cells) {
+    Cell? candidate;
+    List<int> values = cells.where((c) => c.value != null).map((c) => c.value!).toList();
+    if (values.length == rowCount-1) {
+      candidate = cells.firstWhere((c) => c.value == null);
+      for (int i = 1; i <= rowCount; i++) {
+        if (!values.contains(i)) {
+          candidate.value = i;
+          break;
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+
+  ///
   /// Resolve the obvious cases of a Sudoko game before entering expensive back-tracking.
   ///
   void resolveDeterministicCases() {
@@ -366,6 +419,19 @@ class Matrix {
           resolved = true;
         }
       });
+      for (int i = 0; i < rowCount; i++) {
+        var list = rowAt(i);
+        if (resolveLine(list)) {
+          resolved = true;
+        }
+      }
+      for (int i = 0; i < columnCount; i++) {
+        var list = columnAt(i);
+        if (resolveLine(list)) {
+          resolved = true;
+        }
+      }
+
       recalculateAlternatives();
     }
   }
@@ -417,6 +483,15 @@ class Matrix {
   ///
   bool get isEmpty => !cells.any((r) => r.any((c) => c.value != null));
 
+  int get difficultyLevel {
+    _maxLevelToSolve = 0;
+    var m = Matrix.clone(this);
+    m.clearGuesses();
+    m.solve();
+    int level = _maxLevelToSolve;
+    return level;
+  }
+
   ///
   /// Solve a Sudoku game using back-tracking. Pretty trivial algorithm with few optimizations.
   ///
@@ -427,6 +502,9 @@ class Matrix {
     }
     if (!checkValid) {
       return null;
+    }
+    if (level > _maxLevelToSolve) {
+      _maxLevelToSolve = level;
     }
     var cellPos = nextCellWithAlternatives;
     if (cellPos == null) {
@@ -439,6 +517,7 @@ class Matrix {
       }
       var done = m.solve(level + 1);
       if (done != null) {
+        done.name = name;
         return done;
       }
     }
