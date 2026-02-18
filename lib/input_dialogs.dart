@@ -44,17 +44,18 @@ class _GameSelectorWidgetState extends State<GameSelectorWidget> {
 ///
 /// General utility to show a dialog.
 ///
-Future<String?> showContentDialog(BuildContext context, {required String title, required Widget content, required String Function() getValue}) async {
+Future<String?> showContentDialog(BuildContext context, {required String title, required Widget content, String Function()?getValue, List<Widget>? actions}) async {
+  actions ??= <Widget>[
+    TextButton(
+      onPressed: () => Navigator.pop(context, null),
+      child: const Text('Cancel'),
+    ),
+    TextButton(onPressed: () => Navigator.pop(context, getValue == null ? null : getValue()), child: const Text('OK')),
+  ];
   return await showDialog(context: context, builder: (BuildContext context) => AlertDialog(
     title: Text(title),
     content: content,
-    actions: <Widget>[
-      TextButton(
-        onPressed: () => Navigator.pop(context, null),
-        child: const Text('Cancel'),
-      ),
-      TextButton(onPressed: () => Navigator.pop(context, getValue()), child: const Text('OK')),
-    ],
+    actions: actions,
   ),);
 }
 
@@ -67,6 +68,23 @@ Future<String?> showInputPrompt(BuildContext context, {String title = _defaultDi
   return showContentDialog(context, title: title, content: Column(mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [Text(promptText), Flexible(child: TextField(controller: controller))]), getValue: () => controller.text);
+}
+
+
+///
+/// Show a dialog box allowing to display a question, which can be answered using yes/no/cancel ...
+///
+Future<String?> showAlertDialog(BuildContext context, {String title = _defaultDialogTitle, required String message, required List<String> buttons}) async {
+  return showContentDialog(context, title: title, content: Column(mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [Text(message)]),
+    actions: buttons.map((text) =>
+      TextButton(
+        onPressed: () => Navigator.pop(context, text),
+        child: Text(text),
+      )
+    ).toList()
+  );
 }
 
 

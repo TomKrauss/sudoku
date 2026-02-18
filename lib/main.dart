@@ -121,9 +121,29 @@ class _SudokuBoardState extends State<SudokuBoard> {
   FocusNode forCell(Point<int> cell) => focusNodes.putIfAbsent(cell, () => FocusNode());
 
   ///
+  /// Generate a new Sudoku game - to be implemented.
+  ///
+  Future<void> generate() async {
+    await showAlertDialog(context, message: "Generating Sudoku Games is not yet implemented.", buttons: ["OK"]);
+  }
+
+  ///
   /// Load a game from the list of games available.
   ///
   Future<void> loadGame() async {
+    if (model.dirty) {
+      var result = await showAlertDialog(context, message: "Do you want to save the current game?", buttons: ["Yes", "No", "Cancel"]);
+      if (result == "Cancel") {
+        return;
+      }
+      if (result == "Yes") {
+        games.save();
+      }
+      games.markDirty(false);
+    }
+    if (!mounted) {
+      return;
+    }
     final gameName = await selectGame(context);
     if (gameName != null) {
       setState(() {
@@ -266,7 +286,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
                                 c,
                                 editing
                                     ? (s) {
-                                        c.value = int.tryParse(s ?? "");
+                                        model.editCellValue(c, s);
                                         recalculateAlternatives();
                                       }
                                     : null,
@@ -311,8 +331,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
               ElevatedButton(onPressed: newGame, style: buttonStyle, child: Text("New")),
               ElevatedButton(onPressed: edit, style: buttonStyle, child: Text("Edit")),
               ElevatedButton(onPressed: save, style: buttonStyle, child: Text("Save")),
-              ElevatedButton(onPressed: loadGame, style: buttonStyle, child: Text("Load...")),
-              ElevatedButton(onPressed: initWithSample, style: buttonStyle, child: Text("Sample")),
+              ElevatedButton(onPressed: generate, style: buttonStyle, child: Text("Generate")),
+              ElevatedButton(onPressed: loadGame, style: buttonStyle, child: Text("Select..."))
             ],
           ),
         ],

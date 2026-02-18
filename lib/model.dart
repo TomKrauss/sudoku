@@ -75,6 +75,9 @@ class Games {
     logger.i("Saving list of current games to file $historyFile");
     final file = File(historyFile);
     file.writeAsStringSync(asJson());
+    for (final g in games) {
+      g.dirty = false;
+    }
   }
 
   List<Matrix> decodeGames(String gamesEncodedAsJson) {
@@ -134,6 +137,12 @@ class Games {
   void useSample() {
     current = sample;
   }
+
+  void markDirty(bool value) {
+    for (final game in games) {
+      game.dirty = value;
+    }
+  }
 }
 
 ///
@@ -144,6 +153,7 @@ class Matrix {
   String? name;
   List<List<Cell>> cells = [];
   static int _maxLevelToSolve = 0;
+  bool dirty = false;
 
   ///
   /// Returns the placement of a cell in our matrix in form of
@@ -263,7 +273,12 @@ class Matrix {
 
   int? valueAt(int row, int col) => cells[row][col].value;
 
-  void setValue(int row, int col, int? val) => cells[row][col].value = val;
+  ///
+  /// Assign [val] to the cell in [row] and [col].
+  ///
+  void setValue(int row, int col, int? val) {
+    cells[row][col].value = val;
+  }
 
   Map<String, dynamic> asJson() => {
     "name": name,
@@ -522,5 +537,17 @@ class Matrix {
       }
     }
     return null;
+  }
+
+  ///
+  /// Use this method to update the number of a Sudoku cell, when the user edits the Sudoku matrix.
+  ///
+  void editCellValue(Cell c, String? s) {
+    var newValue = int.tryParse(s ?? "");
+    if (newValue != c.value) {
+      return;
+    }
+    c.value = newValue;
+    dirty = true;
   }
 }
