@@ -38,6 +38,106 @@ class Cell {
   String toString() => "Cell $value";
 }
 
+enum GameMode {
+  playing,
+  creating,
+  solved
+}
+
+///
+/// Represents one Sudoku game. This can have several modes / states:
+/// - in play mode one can try to solve the game manually
+/// - in creation mode one can manually edit and add new games.
+/// - in solved mode the app calculates and displays a solved version of the game.
+///
+class Game {
+  final Matrix matrix;
+  GameMode _mode = GameMode.playing;
+  Matrix? _playingMatrix;
+  Matrix? _solvedMatrix;
+
+  String? get name => matrix.name;
+  set name(String? n) => matrix.name = n;
+
+  set dirty(bool dirty) => matrix.dirty = dirty;
+  bool get dirty => matrix.dirty;
+
+  set gameMode(GameMode mode) {
+    if (_mode != mode) {
+      _mode = mode;
+      onChanged();
+    }
+  }
+
+  void onChanged() {
+    var matrix = current;
+    if (matrix == null) {
+      return;
+    }
+    matrix.recalculateAlternatives();
+    matrix.checkValid;
+  }
+
+  Matrix? get current {
+    switch (gameMode) {
+      case GameMode.playing: return playingMatrix;
+      case GameMode.creating: return matrix;
+      default: return solvedMatrix;
+    }
+  }
+  Matrix get playingMatrix {
+    _playingMatrix ??= Matrix.clone(matrix);
+    return _playingMatrix!;
+  }
+
+  Matrix? get solvedMatrix {
+    if (_solvedMatrix == null) {
+      _solvedMatrix = Matrix.clone(matrix);
+      _solvedMatrix = _solvedMatrix?.solve();
+    }
+    return _solvedMatrix;
+  }
+
+  Game(this.matrix);
+
+  @override
+  int get hashCode => matrix.hashCode;
+
+  bool get isEmpty => matrix.isEmpty;
+
+  GameMode get gameMode => _mode;
+
+  int get columnCount => matrix.columnCount;
+  int get rowCount => matrix.rowCount;
+
+  int get gridCount => matrix.gridCount;
+
+  List<List<Cell>> get cells => currentNotNull.cells;
+
+  @override
+  bool operator ==(Object other) => other is Game && matrix == other.matrix;
+
+  Map<String,dynamic> asJson() => matrix.asJson();
+
+  Matrix get currentNotNull => current ?? matrix;
+
+  int get difficultyLevel => matrix.difficultyLevel;
+
+  bool isCellEditable(int x, int y) => current?.isCellEditable(x, y, gameMode == GameMode.creating) ?? false;
+
+  void editCellValue(Cell c, String? s) {
+    currentNotNull.editCellValue(c, s, gameMode == GameMode.creating);
+  }
+
+  Point<int> placementOf(Cell cell) => currentNotNull.placementOf(cell);
+
+  void toggleCellFoundMarker(Cell cell) {
+    if (gameMode == GameMode.playing) {
+      currentNotNull.toggleCellFoundMarker(cell);
+    }
+  }
+}
+
 ///
 /// The games defined in our Sudoku application.
 ///
@@ -62,22 +162,23 @@ class Games {
   ]);
   factory Games() => _singleton;
   final String historyFile = "sudoku.json";
-  final List<Matrix> games = [];
-  Matrix current = sample;
+  final List<Game> games = [];
+  Game current = Game(sample);
+
   int get numberOfGames => games.length;
 
-  void addGame(Matrix matrix) {
-    if (games.contains(matrix)) {
+  void addGame(Game game) {
+    if (games.contains(game)) {
       return;
     }
-    matrix.name ??= "Game ${DateTime.now().toIso8601String()}";
-    games.removeWhere(((g) => g.name == matrix.name));
-    games.add(matrix);
+    game.name ??= "Game ${DateTime.now().toIso8601String()}";
+    games.removeWhere(((g) => g.name == game.name));
+    games.add(game);
   }
 
   void initialize() {
     readHistory();
-    addGame(sample);
+    addGame(Game(sample));
     current = games.last;
   }
 
@@ -116,8 +217,8 @@ class Games {
     }
     var games = decodeGames(file.readAsStringSync());
     logger.i("Reading history file ${file.absolute.path} with ${games.length} saved games.");
-    for (final matrix in games) {
-      addGame(matrix);
+    for (final game in games) {
+      addGame(Game(game));
     }
   }
 
@@ -127,8 +228,10 @@ class Games {
   void newGame({String? name}) {
     var m = Matrix.empty();
     m.name = name;
-    addGame(m);
-    current = m;
+    var game = Game(m);
+    addGame(game);
+    current = game;
+    game.gameMode = GameMode.creating;
   }
 
   ///
@@ -145,13 +248,12 @@ class Games {
   void selectGameNamed(String name) {
     var m = games.where((g) => g.name == name).firstOrNull;
     if (m != null && m != current) {
-      m.clearGuesses();
       current = m;
     }
   }
 
   void useSample() {
-    current = sample;
+    current = Game(sample);
   }
 
   void markDirty(bool value) {
@@ -159,6 +261,7 @@ class Games {
       game.dirty = value;
     }
   }
+
 }
 
 ///
@@ -700,5 +803,15 @@ class Matrix {
   bool isCellEditable(int column, int row, bool creatingGame) {
     var c = cells[row][column];
     return c.given ? creatingGame : !c.given;
+  }
+
+  void clearEdits() {
+    cellsDo((c,_,_) {
+      if (!c.given) {
+        c.solved = false;
+        c.value = null;
+      }
+      return true;
+    });
   }
 }

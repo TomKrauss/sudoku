@@ -3,83 +3,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:markdown_widget/markdown_widget.dart';
+import 'package:sudoku/cell_widget.dart';
 import 'package:sudoku/grid_paper.dart';
 import 'package:sudoku/input_dialogs.dart';
 import 'package:sudoku/model.dart';
-
-double cellSize = 50;
-
-///
-/// Display one cell in the Sudoku board.
-///
-class CellWidget extends StatelessWidget {
-  final bool showAlternatives;
-  final FocusNode focusNode;
-  const CellWidget(this.cell, this.onChanged,
-      {required this.showAlternatives, required this.focusNode, required this.editable, super.key, required this.onDoubleTap});
-  final Cell cell;
-  final void Function(String? newVal)? onChanged;
-  final void Function() onDoubleTap;
-  final bool editable;
-
-  Widget? get editWidget => editable ? TextField(
-    style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-    decoration: InputDecoration(border: InputBorder.none, counterText: ""),
-    textAlign: TextAlign.center,
-    focusNode: focusNode,
-    selectAllOnFocus: true,
-    maxLength: 1,
-    controller: TextEditingController(text: "${cell.value ?? ''}"),
-    onChanged: onChanged,
-    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-    keyboardType: TextInputType.number,
-  ) : null;
-
-  Color get textColor {
-    if (cell.hasError) {
-      return Colors.red;
-    }
-    if (cell.given) {
-      return Colors.black;
-    }
-    if (cell.solved) {
-      return Colors.blue;
-    }
-    return Colors.blueGrey;
-  }
-
-  Widget get contentWidget => cell.value == null && showAlternatives
-      ? (Wrap(
-          children: cell.alternatives
-              .map((i) => Text(" $i ", style: TextStyle(fontSize: 10)))
-              .toList(),
-        ))
-      : Text(
-          "${cell.value ?? ''}",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: textColor,
-          ),
-        );
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onDoubleTap: onDoubleTap,
-      child: Container(
-    width: cellSize,
-    height: cellSize,
-    alignment: Alignment.center,
-    child:
-      Stack(children:
-        [?editWidget,
-          if (cell.value == null || !editable) contentWidget,
-          if (cell.markedAsFound) Container(decoration: ShapeDecoration(shape: CircleBorder(side: BorderSide(width: 2.0))),)
-        ],
-
-      )
-  ));
-}
 
 ///
 /// Main Entry Point into the Sudoku Application
@@ -118,16 +45,18 @@ class _SudokuBoardState extends State<SudokuBoard> {
   final Map<Point<int>, FocusNode> focusNodes = {};
   bool _showAlternatives = false;
   final games = Games();
-  Matrix get model => games.current;
-  bool editing = false;
-  bool creatingGame = false;
+  Game get model => games.current;
   bool _helpPage = false;
   void initWithSample() {
     setState(() {
       games.useSample();
-      editing = false;
+      model.gameMode = GameMode.playing;
     });
   }
+
+  bool get editing => model.gameMode == GameMode.playing || model.gameMode == GameMode.creating;
+  bool get playing => model.gameMode == GameMode.playing;
+  bool get creatingGame => model.gameMode == GameMode.creating;
 
   @override
   void dispose() {
@@ -139,7 +68,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   }
 
   ///
-  /// Returns the focus node for a given cell in a matrix
+  /// Returns the focus node for a given cell in a game
   ///
   FocusNode forCell(Point<int> cell) => focusNodes.putIfAbsent(cell, FocusNode.new);
 
@@ -186,23 +115,19 @@ class _SudokuBoardState extends State<SudokuBoard> {
       if (!model.isEmpty) {
         games.newGame(name: name);
       }
-      editing = true;
-      creatingGame = true;
     });
   }
 
   ///
-  /// Start or stop editing the game matrix.
+  /// Start or stop editing the game.
   /// If [create] is true, this is done to define a game manually, if it
   /// is false, we start to solve the Sudoku manually.
   ///
   void edit({bool create = false}) {
-    creatingGame = false;
     setState(() {
-      model.clearGuesses();
-      editing = true;
-      creatingGame = create;
+      model.gameMode = create ? GameMode.creating : GameMode.playing;
     });
+    focusBoard();
   }
 
   ///
@@ -223,20 +148,17 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   void showSolution() {
     setState(() {
-      editing = false;
-      if (model.solved) {
-        model.clearGuesses();
-        onCurrentGameChanged();
-        return;
-      }
-      var solved = model.solve();
-      if (solved != null) {
-        games.current = solved;
+      if (model.gameMode == GameMode.solved) {
+        model.gameMode = GameMode.playing;
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("No resolution found.")));
+        model.gameMode = GameMode.solved;
+        if (model.current == null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("No resolution found.")));
+        }
       }
+      onCurrentGameChanged();
     });
   }
 
@@ -248,8 +170,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   void onCurrentGameChanged() {
     if (_showAlternatives) {
       setState(() {
-        model.recalculateAlternatives();
-        model.checkValid;
+        model.onChanged();
       });
     }
   }
@@ -284,6 +205,21 @@ class _SudokuBoardState extends State<SudokuBoard> {
   }
 
   ///
+  /// Set the focus to the 1st cell in the board.
+  ///
+  void focusBoard() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final entry in focusNodes.entries) {
+        var p = entry.key;
+        if (model.isCellEditable(p.x, p.y)) {
+          entry.value.requestFocus();
+          return;
+        }
+      }
+    });
+  }
+
+  ///
   /// Move the focus to the next cell with a given delta in cell positions from the current
   /// game cell. It is assumed, that are ordered from left top to bottom right.
   ///
@@ -293,7 +229,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
         var p = entry.key;
         p = wrapPoint(Point(p.x+delta, p.y));
         var originalPoint = p;
-        while (!model.isCellEditable(p.x, p.y, creatingGame)) {
+        while (!model.isCellEditable(p.x, p.y)) {
           p = wrapPoint(Point(p.x+delta, p.y));
           if (p == originalPoint) {
             return;
@@ -304,8 +240,6 @@ class _SudokuBoardState extends State<SudokuBoard> {
       }
     }
   }
-
-  bool get playing => editing && !creatingGame;
 
   ButtonStyle get buttonStyle => ElevatedButton.styleFrom(minimumSize: Size(150, 35));
 
@@ -358,14 +292,17 @@ class _SudokuBoardState extends State<SudokuBoard> {
                         c,
                         editing
                             ? (s) {
-                          model.editCellValue(c, s, creatingGame);
+                          model.editCellValue(c, s);
                           onCurrentGameChanged();
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            moveCellFocusBy(s?.isEmpty == true ? 0 : 1);
+                          });
                         }
                             : null,
                         focusNode: forCell(model.placementOf(c)),
                         showAlternatives: _showAlternatives,
                         editable: editing && (creatingGame || !c.given),
-                        onDoubleTap: () {
+                        onToggleCellMark: () {
                           setState(() {
                             model.toggleCellFoundMarker(c);
                           });
@@ -407,7 +344,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
         children: [
           ElevatedButton(onPressed: loadGame, style: buttonStyle, child: Text("Select Game...")),
           ElevatedButton(onPressed: () => edit(create: false), style: buttonStyle, child: Text("Play")),
-          ElevatedButton(onPressed: showSolution, style: buttonStyle, child: Text(model.solved ? "Clear Hints" : "Show Solution")),
+          ElevatedButton(onPressed: showSolution, style: buttonStyle, child: Text(model.gameMode == GameMode.solved ? "Clear Hints" : "Show Solution")),
           ElevatedButton(onPressed: newGame, style: buttonStyle, child: Text("New Game...")),
           ElevatedButton(onPressed: () => edit(create: true), style: buttonStyle, child: Text("Edit Game")),
           ElevatedButton(onPressed: save, style: buttonStyle, child: Text("Save")),

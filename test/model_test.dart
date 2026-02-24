@@ -69,7 +69,7 @@ void main() {
       final games = Games();
       games.clear();
       games.newGame(name: "test");
-      var m = games.current;
+      var m = games.current.matrix;
       m.setValue(0, 0, 1);
       var encoded = games.asJson();
       var list = games.decodeGames(encoded);

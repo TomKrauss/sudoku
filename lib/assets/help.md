@@ -14,3 +14,8 @@ Supports editing and solving Sudoku puzzles.
 - `Show Solution` - will display the solution to the current puzzle. You may use `Clear Hints` then to remove the solution.
 - `New Game` - will allow you to start a new game. You may enter a name of the puzzle created now and fill out the pre-defined puzzle cell values. 
 
+### Working with the Sudoku Board
+- When solving a puzzle, you may mark cells with a circle to indicate that you know the value of the cell. You can do so by double-clicking on the cell
+or by pressing `Enter` on the cell.
+- To navigate between cells, use the arrow keys.
+
