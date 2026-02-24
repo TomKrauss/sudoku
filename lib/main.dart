@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -310,109 +309,117 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   ButtonStyle get buttonStyle => ElevatedButton.styleFrom(minimumSize: Size(150, 35));
 
-  Widget get helpArea => Padding(padding: EdgeInsets.all(10), child: Column(children: [
-      Expanded(child: MarkdownWidget(data: File("README.md").readAsStringSync())),
-      ElevatedButton(onPressed: toggleHelp, style: buttonStyle, child: Text("Back to Game")),
-    ]));
+  Future<String> _loadHelpFile() => rootBundle.loadString("lib/assets/help.md");
+
+  Widget get helpArea =>
+    FutureBuilder(future: _loadHelpFile(), builder: (context, snapshot) =>
+      Padding(padding: EdgeInsets.all(10), child: Column(children: [
+        Expanded(
+            child: snapshot.data == null ? Text("") : MarkdownWidget(data: snapshot.data!)),
+        ElevatedButton(onPressed: toggleHelp,
+            style: buttonStyle,
+            child: Text("Back to Game")),
+      ])));
+
 
   Widget get contentArea => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Center(
-            child: CallbackShortcuts(
-              bindings: <ShortcutActivator, VoidCallback>{
-                const SingleActivator(LogicalKeyboardKey.arrowUp): () {
-                  moveCellFocusBy(-games.current.columnCount);
-                },
-                const SingleActivator(LogicalKeyboardKey.arrowDown): () {
-                  moveCellFocusBy(games.current.columnCount);
-                },
-                const SingleActivator(LogicalKeyboardKey.arrowRight): () {
-                  moveCellFocusBy(1);
-                },
-                const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
-                  moveCellFocusBy(-1);
-                },
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Center(
+          child: CallbackShortcuts(
+            bindings: <ShortcutActivator, VoidCallback>{
+              const SingleActivator(LogicalKeyboardKey.arrowUp): () {
+                moveCellFocusBy(-games.current.columnCount);
               },
-              child: CustomGridPaper(
-                divisions: 3,
-                subdivisions: 3,
-                interval: model.gridCount * cellSize,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: model.cells
-                      .map(
-                        (l) => Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: l
-                          .map(
-                            (c) => CellWidget(
-                          c,
-                          editing
-                              ? (s) {
-                            model.editCellValue(c, s, creatingGame);
-                            onCurrentGameChanged();
-                          }
-                              : null,
-                          focusNode: forCell(model.placementOf(c)),
-                          showAlternatives: _showAlternatives,
-                          editable: editing && (creatingGame || !c.given),
-                          onDoubleTap: () {
-                            setState(() {
-                              model.toggleCellFoundMarker(c);
-                            });
-                          },
-                        ),
-                      )
-                          .toList(),
-                    ),
-                  )
-                      .toList(),
-                ),
-              ),
-            )),
-        SizedBox(height: 20),
-        Padding(padding: EdgeInsetsGeometry.all(15),
-            child: Text("${playing ? 'Playing' : editing ? 'Editing' : 'Selected'} game: ${model.name}, difficulty level ${model.difficultyLevel}", style: Theme.of(context).textTheme.bodySmall,)),
-        Divider(),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Flexible(
-              child: CheckboxListTile(
-                onChanged: (v) {
-                  setState(() {
-                    _showAlternatives = v == true;
-                  });
-                  onCurrentGameChanged();
-                },
-                value: _showAlternatives,
-                title: Text("Show Alternatives"),
+              const SingleActivator(LogicalKeyboardKey.arrowDown): () {
+                moveCellFocusBy(games.current.columnCount);
+              },
+              const SingleActivator(LogicalKeyboardKey.arrowRight): () {
+                moveCellFocusBy(1);
+              },
+              const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
+                moveCellFocusBy(-1);
+              },
+            },
+            child: CustomGridPaper(
+              divisions: 3,
+              subdivisions: 3,
+              interval: model.gridCount * cellSize,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: model.cells
+                    .map(
+                      (l) => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: l
+                        .map(
+                          (c) => CellWidget(
+                        c,
+                        editing
+                            ? (s) {
+                          model.editCellValue(c, s, creatingGame);
+                          onCurrentGameChanged();
+                        }
+                            : null,
+                        focusNode: forCell(model.placementOf(c)),
+                        showAlternatives: _showAlternatives,
+                        editable: editing && (creatingGame || !c.given),
+                        onDoubleTap: () {
+                          setState(() {
+                            model.toggleCellFoundMarker(c);
+                          });
+                        },
+                      ),
+                    )
+                        .toList(),
+                  ),
+                )
+                    .toList(),
               ),
             ),
-          ],
-        ),
-        Wrap(
-          alignment: WrapAlignment.spaceAround,
-          runSpacing: 10,
-          spacing: 10,
-          children: [
-            ElevatedButton(onPressed: loadGame, style: buttonStyle, child: Text("Select Game...")),
-            ElevatedButton(onPressed: () => edit(create: false), style: buttonStyle, child: Text("Play")),
-            ElevatedButton(onPressed: showSolution, style: buttonStyle, child: Text(model.solved ? "Clear Hints" : "Show Solution")),
-            ElevatedButton(onPressed: newGame, style: buttonStyle, child: Text("New Game...")),
-            ElevatedButton(onPressed: () => edit(create: true), style: buttonStyle, child: Text("Edit Game")),
-            ElevatedButton(onPressed: save, style: buttonStyle, child: Text("Save")),
-            ElevatedButton(onPressed: toggleHelp, style: buttonStyle, child: Text("Help")),
-          ],
-        ),
-      ],
-    );
+          )),
+      SizedBox(height: 20),
+      Padding(padding: EdgeInsetsGeometry.all(15),
+          child: Text("${playing ? 'Playing' : editing ? 'Editing' : 'Selected'} game: ${model.name}, difficulty level ${model.difficultyLevel}", style: Theme.of(context).textTheme.bodySmall,)),
+      Divider(),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(
+            child: CheckboxListTile(
+              onChanged: (v) {
+                setState(() {
+                  _showAlternatives = v == true;
+                });
+                onCurrentGameChanged();
+              },
+              value: _showAlternatives,
+              title: Text("Show Alternatives"),
+            ),
+          ),
+        ],
+      ),
+      Wrap(
+        alignment: WrapAlignment.spaceAround,
+        runSpacing: 10,
+        spacing: 10,
+        children: [
+          ElevatedButton(onPressed: loadGame, style: buttonStyle, child: Text("Select Game...")),
+          ElevatedButton(onPressed: () => edit(create: false), style: buttonStyle, child: Text("Play")),
+          ElevatedButton(onPressed: showSolution, style: buttonStyle, child: Text(model.solved ? "Clear Hints" : "Show Solution")),
+          ElevatedButton(onPressed: newGame, style: buttonStyle, child: Text("New Game...")),
+          ElevatedButton(onPressed: () => edit(create: true), style: buttonStyle, child: Text("Edit Game")),
+          ElevatedButton(onPressed: save, style: buttonStyle, child: Text("Save")),
+          ElevatedButton(onPressed: toggleHelp, style: buttonStyle, child: Text("Help")),
+        ],
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: Text(widget.title)),
       body: _helpPage ? helpArea : contentArea
-    );
+  );
 }
