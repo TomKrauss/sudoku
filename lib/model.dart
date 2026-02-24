@@ -13,8 +13,23 @@ extension ListExtension<T> on List<T> {
 /// Represents one cell in the Sudoko Matrix.
 ///
 class Cell {
+  ///
+  /// Whether this cells value was pre-defined for the original game.
+  ///
+  bool given = false;
+  ///
+  /// Whether this cell was solved as part of solving the Sudoku.
+  ///
   bool solved = false;
+  ///
+  /// Whether this cell contains a value causing a duplicate.
+  ///
   bool hasError = false;
+  ///
+  /// Can be used, when solving the Sudoku manually to mark a cell as being solved - one
+  /// is sure, the value is correct.
+  ///
+  bool markedAsFound = false;
   int? value;
   int? trying;
   List<int> alternatives = [];
@@ -68,7 +83,8 @@ class Games {
 
   String asJson() {
     final output = {"games": games.map((g) => g.asJson()).toList()};
-    return jsonEncode(output);
+    var encoder = JsonEncoder.withIndent('  ');
+    return encoder.convert(output);
   }
 
   void save() {
@@ -123,10 +139,10 @@ class Games {
   }
 
   ///
-  /// Load a game given its name. A game with the given name must exist or
+  /// Select a game given its name and mae it the current game. A game with the given name must exist or
   /// an exception is thrown.
   ///
-  void load(String name) {
+  void selectGameNamed(String name) {
     var m = games.where((g) => g.name == name).firstOrNull;
     if (m != null && m != current) {
       m.clearGuesses();
@@ -211,6 +227,7 @@ class Matrix {
     var result = Matrix.empty();
     result.name = name;
     result.place(input);
+    result.markGivenCells();
     return result;
   }
 
@@ -220,6 +237,8 @@ class Matrix {
       var origin = m.cells[row][column];
       cell.value = origin.value;
       cell.solved = origin.solved;
+      cell.given = origin.given;
+      return true;
     });
     return result;
   }
@@ -257,6 +276,7 @@ class Matrix {
     var list = init.map((l) => List<int?>.from(l)).toList();
     result.place(list);
     result.name = name;
+    result.markGivenCells();
     return result;
   }
 
@@ -267,6 +287,7 @@ class Matrix {
   void place(List<List<int?>> init) {
     cellsDo((cell, r, c) {
       setValue(r, c, init[r][c]);
+      return true;
     });
     recalculateAlternatives();
   }
@@ -295,6 +316,7 @@ class Matrix {
         cell.hasError = false;
         cell.alternatives.clear();
       }
+      return true;
     });
   }
 
@@ -312,13 +334,22 @@ class Matrix {
     return result;
   }
 
+  ///
+  /// Returns all values contained in a cell block 3x3.
+  ///
   List<int> blockValues(int row, int col) =>
       blockCells(row, col).map((c) => c.value).nonNulls.toList();
 
-  void cellsDo(void Function(Cell cell, int row, int column) f) {
+  ///
+  /// Execute a callback [f] for each cell of our Sudoku game.
+  /// If the callback returns false, execution completes.
+  ///
+  void cellsDo(bool Function(Cell cell, int row, int column) f) {
     for (int r = 0; r < cells.length; r++) {
       for (int c = 0; c < cells[r].length; c++) {
-        f(cells[r][c], r, c);
+        if (!f(cells[r][c], r, c)) {
+          break;
+        }
       }
     }
   }
@@ -326,7 +357,11 @@ class Matrix {
   bool get solved {
     var solved = true;
     cellsDo((cell, r, c) {
-      solved = solved && cell.value != null;
+      if (cell.value == null) {
+        solved = false;
+        return false;
+      }
+      return true;
     });
     return solved;
   }
@@ -334,6 +369,7 @@ class Matrix {
   bool get checkValid {
     cellsDo((cell, r, c) {
       cell.hasError = false;
+      return true;
     });
     var valid = true;
     for (int r = 0; r < cells.length; r++) {
@@ -377,10 +413,10 @@ class Matrix {
     return valid;
   }
 
-  void calculateAlternatives(int row, int col) {
+  bool calculateAlternatives(int row, int col) {
     if (cells[row][col].value != null) {
       cells[row][col].alternatives = [];
-      return;
+      return true;
     }
     var selected = [
       ...rowValues(row),
@@ -390,6 +426,7 @@ class Matrix {
     final a = List<int>.generate(9, (index) => index + 1).toSet();
     a.removeAll(selected);
     cells[row][col].alternatives = a.toList();
+    return true;
   }
 
   ///
@@ -412,6 +449,7 @@ class Matrix {
       for (int i = 1; i <= rowCount; i++) {
         if (!values.contains(i)) {
           candidate.value = i;
+          candidate.solved = true;
           break;
         }
       }
@@ -433,6 +471,7 @@ class Matrix {
           cell.solved = true;
           resolved = true;
         }
+        return true;
       });
       for (int i = 0; i < rowCount; i++) {
         var list = rowAt(i);
@@ -512,11 +551,11 @@ class Matrix {
   ///
   Matrix? solve([int level = 0]) {
     resolveDeterministicCases();
-    if (solved) {
-      return this;
-    }
     if (!checkValid) {
       return null;
+    }
+    if (solved) {
+      return this;
     }
     if (level > _maxLevelToSolve) {
       _maxLevelToSolve = level;
@@ -525,12 +564,9 @@ class Matrix {
     if (cellPos == null) {
       return null;
     }
-    while (checkValid) {
-      var m = tryNextAlternative(row: cellPos.row, column: cellPos.column);
-      if (m == null) {
-        return null;
-      }
-      var done = m.solve(level + 1);
+    Matrix? m;
+    while ((m = tryNextAlternative(row: cellPos.row, column: cellPos.column)) != null) {
+      var done = m!.solve(level + 1);
       if (done != null) {
         done.name = name;
         return done;
@@ -541,13 +577,38 @@ class Matrix {
 
   ///
   /// Use this method to update the number of a Sudoku cell, when the user edits the Sudoku matrix.
+  /// If [creatingGame] is true, the cell is edited of part of manually creating a new game.
   ///
-  void editCellValue(Cell c, String? s) {
+  void editCellValue(Cell c, String? s, bool creatingGame) {
     var newValue = int.tryParse(s ?? "");
-    if (newValue != c.value) {
+    if (newValue == c.value) {
       return;
     }
     c.value = newValue;
+    c.solved = false;
+    c.given = creatingGame;
     dirty = true;
+  }
+
+  ///
+  /// Mark all cells with a value as `given` - they are expected to
+  /// be defined as part of the game played.
+  ///
+  void markGivenCells() {
+    cellsDo((c, _, _) {
+      c.given = c.value != null;
+      return true;
+    });
+  }
+
+  void toggleCellFoundMarker(Cell cell) {
+    if (!cell.hasError && !cell.given) {
+      cell.markedAsFound = !cell.markedAsFound;
+    }
+  }
+
+  bool isCellEditable(int column, int row, bool creatingGame) {
+    var c = cells[row][column];
+    return c.given ? creatingGame : !c.given;
   }
 }

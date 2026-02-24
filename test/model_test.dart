@@ -29,6 +29,26 @@ void main() {
       expect(m.valueAt(7, 0), 9);
       expect(m.valueAt(8, 8), 4);
       expect(m.difficultyLevel > 3, true);
+      var m2 = m.solve();
+      expect(m2, isNotNull);
+      expect(m2!.valueAt(0, 0), 5);
+      expect(m2.valueAt(0, 1), 4);
+      expect(m2.checkValid, true);
+      m = Matrix.parse(
+              "_ 4 2 _ 5 7 _ 8 _ "
+              "_ _ _ _ _ _ _ _ 3 "
+              "_ _ _ 8 _ 2 _ _ _ "
+              "8 _ _ _ 6 _ _ _ 2 "
+              "_ 6 _ _ 1 3 _ _ _ "
+              "_ _ 7 _ _ _ 5 _ _ "
+              "_ 3 _ _ _ 4 _ 2 _ "
+              "_ 7 _ _ 2 5 _ _ 1 "
+              "_ _ 5 _ _ _ 4 _ _ "
+      );
+      expect(m.checkValid, true);
+      m2 = m.solve();
+      expect(m2, isNotNull);
+      expect(m2!.checkValid, true);
     });
     test("Comparison", () {
       var m1 = Matrix.empty();
