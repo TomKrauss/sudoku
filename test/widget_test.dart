@@ -28,5 +28,6 @@ void main() {
     for (var i = 1; i < 9; i++) {
       expect(find.text('$i'), findsAtLeast(9));
     }
+    await tester.pumpAndSettle();
   });
 }
