@@ -168,7 +168,10 @@ class Matrix {
   static const int defaultSize = 9;
   String? name;
   List<List<Cell>> cells = [];
-  static int _maxLevelToSolve = 0;
+  ///
+  /// Used to calculate the difficulty of a game.
+  ///
+  static int _stepsToSolveGame = 0;
   bool dirty = false;
 
   ///
@@ -243,22 +246,38 @@ class Matrix {
     return result;
   }
 
+  ///
+  /// Parse a string defining a Sudoku game with empty cells containing a placeholder character such as X or _
+  /// and with other cells defining the number all separated by spaces.
+  ///
+  /// Example string which can be parsed to a matrix:
+  ///           "_ _ _ 8 3 _ _ _ _ "
+  ///           "_ _ _ _ 7 4 _ 5 _ "
+  ///           "_ _ _ _ _ _ _ _ _ "
+  ///           "_ _ 4 _ _ 6 _ _ 8 "
+  ///           "2 _ _ _ 8 _ _ _ 9 "
+  ///           "_ 6 _ 1 _ 2 4 _ _ "
+  ///           "_ _ 5 7 _ _ 9 _ 3 "
+  ///           "9 8 _ _ _ _ _ _ 5 "
+  ///           "_ _ 1 _ 6 5 _ _ 4 "
+  ///
   Matrix.parse(String s, {int? size}) {
     size ??= defaultSize;
     _addCells(size);
+    var tokens = s.split(RegExp("\\s+"));
     for (int i = 0; i < defaultSize; i++) {
       for (int j = 0; j < defaultSize; j++) {
-        int idx = i * defaultSize * 2 + (j*2);
-        if (idx >= s.length) {
-          throw Exception("Specified matrix string is not big enough");
-        }
-        var cell = s.substring(idx, idx+1);
-        var value = cell == '_' ? null : int.tryParse(cell);
+        int idx = i * defaultSize + j;
+        var cell = tokens[idx];
+        var value = (cell == '_' || cell == 'X') ? null : int.tryParse(cell);
         cells[i][j].value = value;
       }
     }
   }
 
+  ///
+  /// Add a list of cells with a given [size].
+  ///
   void _addCells(int size) {
     for (var row = 0; row < size; row++) {
       var rowCells = List.generate(size, (index) => Cell());
@@ -266,6 +285,9 @@ class Matrix {
     }
   }
 
+  ///
+  /// Generate an empty matrix with a default size of 9x9 or a given size.
+  ///
   Matrix.empty({int? size}) {
     size ??= defaultSize;
     _addCells(size);
@@ -280,8 +302,62 @@ class Matrix {
     return result;
   }
 
+  ///
+  /// Tries to find two identical alternative pairs for the given set of cells which together
+  /// must conform to the rule, that every cell must have a distinct value. If such two cells can
+  /// be identified, the two alternative values selectable for the two cells can be removed from
+  /// the alternatives of all other cells in the given set of cells.
+  ///
+  void eliminateAlternativePairs(List<Cell> cells) {
+    Cell? first;
+    Cell? second;
+    for (var i = 0; i < cells.length-1; i++) {
+      final cell = cells[i];
+      if (cell.alternatives.length == 2) {
+        for (int j = i+1; j < cells.length; j++) {
+          final cell2 = cells[j];
+          if (cell2.alternatives.length == 2) {
+            var compare = cell2.alternatives.toSet();
+            compare.removeAll(cell.alternatives);
+            if (compare.isEmpty) {
+              first = cell;
+              second = cell2;
+              break;
+            }
+          }
+        }
+        if (first != null && second != null) {
+          break;
+        }
+      }
+    }
+    if (first != null) {
+      for (var i = 0; i < cells.length-1; i++) {
+        final cell = cells[i];
+        if (cell != first && cell != second) {
+          cell.alternatives.removeWhere((a) => first!.alternatives.contains(a));
+        }
+      }
+    }
+  }
+
+  ///
+  /// Calculate the possible alternatives to be used for a cell.
+  ///
   void recalculateAlternatives() {
     cellsDo((cell, r, c) => calculateAlternatives(r, c));
+    for (var i = 0; i < rowCount; i++) {
+      var row = cells[i];
+      eliminateAlternativePairs(row);
+      for (var j = 0; j < columnCount; j++) {
+        var column = columnAt(j);
+        eliminateAlternativePairs(column);
+      }
+    }
+    blocksDo((cells) {
+      eliminateAlternativePairs(cells);
+      return true;
+    });
   }
 
   void place(List<List<int?>> init) {
@@ -366,6 +442,17 @@ class Matrix {
     return solved;
   }
 
+  void blocksDo(bool Function(List<Cell> blockCells) callback) {
+    for (int r = 0; r < cells.length; r += 3) {
+      for (int c = 0; c < cells[0].length; c += 3) {
+        final cells = blockCells(r, c);
+        if (!callback(cells)) {
+          return;
+        }
+      }
+    }
+  }
+
   bool get checkValid {
     cellsDo((cell, r, c) {
       cell.hasError = false;
@@ -418,11 +505,11 @@ class Matrix {
       cells[row][col].alternatives = [];
       return true;
     }
-    var selected = [
+    var selected = <int>{
       ...rowValues(row),
       ...colValues(col),
       ...blockValues(row, col),
-    ];
+    };
     final a = List<int>.generate(9, (index) => index + 1).toSet();
     a.removeAll(selected);
     cells[row][col].alternatives = a.toList();
@@ -439,9 +526,10 @@ class Matrix {
   List<Cell> columnAt(int columnNumber) => cells.map((l) => l[columnNumber]).toList();
 
   ///
-  /// Tries to find rows / columns where only one cell is not resolved.
+  /// Tries to find rows / columns / a block of cells where only one cell is not resolved - in
+  /// that case fill in the last missing value.
   ///
-  bool resolveLine(List<Cell> cells) {
+  bool addLastValueToGroup(List<Cell> cells) {
     Cell? candidate;
     List<int> values = cells.where((c) => c.value != null).map((c) => c.value!).toList();
     if (values.length == rowCount-1) {
@@ -475,17 +563,22 @@ class Matrix {
       });
       for (int i = 0; i < rowCount; i++) {
         var list = rowAt(i);
-        if (resolveLine(list)) {
+        if (addLastValueToGroup(list)) {
           resolved = true;
         }
       }
       for (int i = 0; i < columnCount; i++) {
         var list = columnAt(i);
-        if (resolveLine(list)) {
+        if (addLastValueToGroup(list)) {
           resolved = true;
         }
       }
-
+      blocksDo((cells) {
+        if (addLastValueToGroup(cells)) {
+          resolved = true;
+        }
+        return true;
+      });
       recalculateAlternatives();
     }
   }
@@ -538,12 +631,11 @@ class Matrix {
   bool get isEmpty => !cells.any((r) => r.any((c) => c.value != null));
 
   int get difficultyLevel {
-    _maxLevelToSolve = 0;
+    _stepsToSolveGame = 0;
     var m = Matrix.clone(this);
     m.clearGuesses();
     m.solve();
-    int level = _maxLevelToSolve;
-    return level;
+    return _stepsToSolveGame;
   }
 
   ///
@@ -557,9 +649,6 @@ class Matrix {
     if (solved) {
       return this;
     }
-    if (level > _maxLevelToSolve) {
-      _maxLevelToSolve = level;
-    }
     var cellPos = nextCellWithAlternatives;
     if (cellPos == null) {
       return null;
@@ -567,6 +656,7 @@ class Matrix {
     Matrix? m;
     while ((m = tryNextAlternative(row: cellPos.row, column: cellPos.column)) != null) {
       var done = m!.solve(level + 1);
+      _stepsToSolveGame++;
       if (done != null) {
         done.name = name;
         return done;

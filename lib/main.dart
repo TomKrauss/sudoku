@@ -172,6 +172,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
     if (gameName != null) {
       setState(() {
         games.selectGameNamed(gameName);
+        onCurrentGameChanged();
       });
     }
   }
@@ -217,6 +218,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
       editing = false;
       if (model.solved) {
         model.clearGuesses();
+        onCurrentGameChanged();
         return;
       }
       var solved = model.solve();
@@ -230,7 +232,12 @@ class _SudokuBoardState extends State<SudokuBoard> {
     });
   }
 
-  void recalculateAlternatives() {
+  ///
+  /// Invoked, when a new game is loaded / selected or edited by the user.
+  /// Will update the model depending on the current options selected and e.g.
+  /// check the validity of the matrix and alternate values for each cell.
+  ///
+  void onCurrentGameChanged() {
     if (_showAlternatives) {
       setState(() {
         model.recalculateAlternatives();
@@ -334,7 +341,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
                                 editing
                                     ? (s) {
                                         model.editCellValue(c, s, creatingGame);
-                                        recalculateAlternatives();
+                                        onCurrentGameChanged();
                                       }
                                     : null,
                                 focusNode: forCell(model.placementOf(c)),
@@ -367,7 +374,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
                     setState(() {
                       _showAlternatives = v == true;
                     });
-                    recalculateAlternatives();
+                    onCurrentGameChanged();
                   },
                   value: _showAlternatives,
                   title: Text("Show Alternatives"),

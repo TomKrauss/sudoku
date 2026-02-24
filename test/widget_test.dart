@@ -11,13 +11,16 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sudoku/main.dart';
 
+///
+/// Component test of the Sudoku application.
+///
 void main() {
   testWidgets('Sudoko Application smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.binding.setSurfaceSize(const Size(1020, 1020));
     await tester.pumpWidget(const SudokuApplication());
 
-    var solve = find.text('Solve');
+    var solve = find.text('Show Solution');
     // Solve game and verify, that all numbers are present 9 times.
     expect(solve, findsOneWidget);
     await tester.tap(solve);

@@ -105,7 +105,7 @@
       ]
     },
     {
-      "name": "Recent Game",
+      "name": "Medium Level Game",
       "cells": [
         [
           2,
@@ -209,7 +209,7 @@
       ]
     },
     {
-      "name": "Complicated Game",
+      "name": "Advanced Level Game",
       "cells": [
         [
           null,
