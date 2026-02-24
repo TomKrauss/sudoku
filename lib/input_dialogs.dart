@@ -23,8 +23,7 @@ class _GameSelectorWidgetState extends State<GameSelectorWidget> {
   String? get selection => widget.value.value;
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(width: 400, height: 300, child: Column(
+  Widget build(BuildContext context) => SizedBox(width: 400, height: 300, child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -38,7 +37,6 @@ class _GameSelectorWidgetState extends State<GameSelectorWidget> {
           widget.value.value = g.name;
         })
         )).toList(),))]));
-  }
 }
 
 ///
@@ -74,8 +72,7 @@ Future<String?> showInputPrompt(BuildContext context, {String title = _defaultDi
 ///
 /// Show a dialog box allowing to display a question, which can be answered using yes/no/cancel ...
 ///
-Future<String?> showAlertDialog(BuildContext context, {String title = _defaultDialogTitle, required String message, required List<String> buttons}) async {
-  return showContentDialog(context, title: title, content: Column(mainAxisSize: MainAxisSize.min,
+Future<String?> showAlertDialog(BuildContext context, {String title = _defaultDialogTitle, required String message, required List<String> buttons}) async => showContentDialog(context, title: title, content: Column(mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [Text(message)]),
     actions: buttons.map((text) =>
@@ -85,7 +82,6 @@ Future<String?> showAlertDialog(BuildContext context, {String title = _defaultDi
       )
     ).toList()
   );
-}
 
 
 ///

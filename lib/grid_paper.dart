@@ -40,12 +40,10 @@ class _GridPaperPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_GridPaperPainter oldPainter) {
-    return oldPainter.color != color ||
+  bool shouldRepaint(_GridPaperPainter oldPainter) => oldPainter.color != color ||
         oldPainter.interval != interval ||
         oldPainter.divisions != divisions ||
         oldPainter.subdivisions != subdivisions;
-  }
 
   @override
   bool hitTest(Offset position) => false;
@@ -102,8 +100,7 @@ class CustomGridPaper extends StatelessWidget {
   final Widget? child;
 
   @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
+  Widget build(BuildContext context) => CustomPaint(
       foregroundPainter: _GridPaperPainter(
         color: color,
         interval: interval,
@@ -112,5 +109,4 @@ class CustomGridPaper extends StatelessWidget {
       ),
       child: child,
     );
-  }
 }

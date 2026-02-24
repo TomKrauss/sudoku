@@ -19,8 +19,8 @@ class CellWidget extends StatelessWidget {
   const CellWidget(this.cell, this.onChanged,
       {required this.showAlternatives, required this.focusNode, required this.editable, super.key, required this.onDoubleTap});
   final Cell cell;
-  final Function(String? newVal)? onChanged;
-  final Function() onDoubleTap;
+  final void Function(String? newVal)? onChanged;
+  final void Function() onDoubleTap;
   final bool editable;
 
   Widget? get editWidget => editable ? TextField(
@@ -97,13 +97,11 @@ class SudokuApplication extends StatelessWidget {
 
   // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context) => MaterialApp(
       title: 'Sudoku Solver',
       debugShowCheckedModeBanner: false,
       home: const SudokuBoard(title: 'Edit a Sudoku and solve it'),
     );
-  }
 }
 
 ///
@@ -144,7 +142,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   ///
   /// Returns the focus node for a given cell in a matrix
   ///
-  FocusNode forCell(Point<int> cell) => focusNodes.putIfAbsent(cell, () => FocusNode());
+  FocusNode forCell(Point<int> cell) => focusNodes.putIfAbsent(cell, FocusNode.new);
 
   ///
   /// Generate a new Sudoku game - to be implemented.
@@ -179,7 +177,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
     }
   }
 
-  void newGame() async {
+  Future<void> newGame() async {
     var name = await showInputPrompt(context, promptText: "Enter the name of the new game",
         title: "New Game", initialValue: "Game #${games.numberOfGames+1}");
     if (name == null) {
@@ -312,15 +310,12 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   ButtonStyle get buttonStyle => ElevatedButton.styleFrom(minimumSize: Size(150, 35));
 
-  Widget get helpArea {
-    return Padding(padding: EdgeInsets.all(10), child: Column(children: [
+  Widget get helpArea => Padding(padding: EdgeInsets.all(10), child: Column(children: [
       Expanded(child: MarkdownWidget(data: File("README.md").readAsStringSync())),
       ElevatedButton(onPressed: toggleHelp, style: buttonStyle, child: Text("Back to Game")),
     ]));
-  }
 
-  Widget get contentArea {
-    return Column(
+  Widget get contentArea => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Center(
@@ -414,13 +409,10 @@ class _SudokuBoardState extends State<SudokuBoard> {
         ),
       ],
     );
-  }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: Text(widget.title)),
       body: _helpPage ? helpArea : contentArea
     );
-  }
 }
