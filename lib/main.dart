@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:markdown_widget/markdown_widget.dart';
 import 'package:sudoku/grid_paper.dart';
 import 'package:sudoku/input_dialogs.dart';
 import 'package:sudoku/model.dart';
@@ -122,7 +124,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   Matrix get model => games.current;
   bool editing = false;
   bool creatingGame = false;
-
+  bool _helpPage = false;
   void initWithSample() {
     setState(() {
       games.useSample();
@@ -213,6 +215,15 @@ class _SudokuBoardState extends State<SudokuBoard> {
     games.save();
   }
 
+  ///
+  /// Display the help page or hide it.
+  ///
+  void toggleHelp() {
+    setState(() {
+      _helpPage = !_helpPage;
+    });
+  }
+
   void showSolution() {
     setState(() {
       editing = false;
@@ -299,15 +310,20 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   bool get playing => editing && !creatingGame;
 
-  @override
-  Widget build(BuildContext context) {
-    var buttonStyle = ElevatedButton.styleFrom(minimumSize: Size(150, 35));
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
+  ButtonStyle get buttonStyle => ElevatedButton.styleFrom(minimumSize: Size(150, 35));
+
+  Widget get helpArea {
+    return Padding(padding: EdgeInsets.all(10), child: Column(children: [
+      Expanded(child: MarkdownWidget(data: File("README.md").readAsStringSync())),
+      ElevatedButton(onPressed: toggleHelp, style: buttonStyle, child: Text("Back to Game")),
+    ]));
+  }
+
+  Widget get contentArea {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
             child: CallbackShortcuts(
               bindings: <ShortcutActivator, VoidCallback>{
                 const SingleActivator(LogicalKeyboardKey.arrowUp): () {
@@ -324,79 +340,87 @@ class _SudokuBoardState extends State<SudokuBoard> {
                 },
               },
               child: CustomGridPaper(
-              divisions: 3,
-              subdivisions: 3,
-              interval: model.gridCount * cellSize,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: model.cells
-                    .map(
-                      (l) => Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: l
-                            .map(
-                              (c) => CellWidget(
-                                c,
-                                editing
-                                    ? (s) {
-                                        model.editCellValue(c, s, creatingGame);
-                                        onCurrentGameChanged();
-                                      }
-                                    : null,
-                                focusNode: forCell(model.placementOf(c)),
-                                showAlternatives: _showAlternatives,
-                                editable: editing && (creatingGame || !c.given),
-                                onDoubleTap: () {
-                                  setState(() {
-                                    model.toggleCellFoundMarker(c);
-                                  });
-                                },
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          )),
-          SizedBox(height: 20),
-          Padding(padding: EdgeInsetsGeometry.all(15),
-              child: Text("${playing ? 'Playing' : editing ? 'Editing' : 'Selected'} game: ${model.name}, difficulty level ${model.difficultyLevel}", style: Theme.of(context).textTheme.bodySmall,)),
-          Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: CheckboxListTile(
-                  onChanged: (v) {
-                    setState(() {
-                      _showAlternatives = v == true;
-                    });
-                    onCurrentGameChanged();
-                  },
-                  value: _showAlternatives,
-                  title: Text("Show Alternatives"),
+                divisions: 3,
+                subdivisions: 3,
+                interval: model.gridCount * cellSize,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: model.cells
+                      .map(
+                        (l) => Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: l
+                          .map(
+                            (c) => CellWidget(
+                          c,
+                          editing
+                              ? (s) {
+                            model.editCellValue(c, s, creatingGame);
+                            onCurrentGameChanged();
+                          }
+                              : null,
+                          focusNode: forCell(model.placementOf(c)),
+                          showAlternatives: _showAlternatives,
+                          editable: editing && (creatingGame || !c.given),
+                          onDoubleTap: () {
+                            setState(() {
+                              model.toggleCellFoundMarker(c);
+                            });
+                          },
+                        ),
+                      )
+                          .toList(),
+                    ),
+                  )
+                      .toList(),
                 ),
               ),
-            ],
-          ),
-          Wrap(
-            alignment: WrapAlignment.spaceAround,
-            runSpacing: 10,
-            spacing: 10,
-            children: [
-              ElevatedButton(onPressed: loadGame, style: buttonStyle, child: Text("Select Game...")),
-              ElevatedButton(onPressed: () => edit(create: false), style: buttonStyle, child: Text("Play")),
-              ElevatedButton(onPressed: showSolution, style: buttonStyle, child: Text(model.solved ? "Clear Hints" : "Show Solution")),
-              ElevatedButton(onPressed: newGame, style: buttonStyle, child: Text("New Game...")),
-              ElevatedButton(onPressed: () => edit(create: true), style: buttonStyle, child: Text("Edit Game")),
-              ElevatedButton(onPressed: save, style: buttonStyle, child: Text("Save")),
-            ],
-          ),
-        ],
-      ),
+            )),
+        SizedBox(height: 20),
+        Padding(padding: EdgeInsetsGeometry.all(15),
+            child: Text("${playing ? 'Playing' : editing ? 'Editing' : 'Selected'} game: ${model.name}, difficulty level ${model.difficultyLevel}", style: Theme.of(context).textTheme.bodySmall,)),
+        Divider(),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: CheckboxListTile(
+                onChanged: (v) {
+                  setState(() {
+                    _showAlternatives = v == true;
+                  });
+                  onCurrentGameChanged();
+                },
+                value: _showAlternatives,
+                title: Text("Show Alternatives"),
+              ),
+            ),
+          ],
+        ),
+        Wrap(
+          alignment: WrapAlignment.spaceAround,
+          runSpacing: 10,
+          spacing: 10,
+          children: [
+            ElevatedButton(onPressed: loadGame, style: buttonStyle, child: Text("Select Game...")),
+            ElevatedButton(onPressed: () => edit(create: false), style: buttonStyle, child: Text("Play")),
+            ElevatedButton(onPressed: showSolution, style: buttonStyle, child: Text(model.solved ? "Clear Hints" : "Show Solution")),
+            ElevatedButton(onPressed: newGame, style: buttonStyle, child: Text("New Game...")),
+            ElevatedButton(onPressed: () => edit(create: true), style: buttonStyle, child: Text("Edit Game")),
+            ElevatedButton(onPressed: save, style: buttonStyle, child: Text("Save")),
+            ElevatedButton(onPressed: toggleHelp, style: buttonStyle, child: Text("Help")),
+          ],
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: _helpPage ? helpArea : contentArea
     );
   }
 }

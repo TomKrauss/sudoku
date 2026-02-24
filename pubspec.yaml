@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   logger: ^2.6.2
+  markdown_widget: ^2.3.2+8
 
 dev_dependencies:
   flutter_test:
