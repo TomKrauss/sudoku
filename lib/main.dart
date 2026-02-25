@@ -47,6 +47,14 @@ class _SudokuBoardState extends State<SudokuBoard> {
   final games = Games();
   Game get model => games.current;
   bool _helpPage = false;
+  late Future<Object?> initialize;
+
+  @override
+  void initState() {
+    super.initState();
+    initialize = Games().initialize();
+  }
+
   void initWithSample() {
     setState(() {
       games.useSample();
@@ -388,6 +396,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: Text(widget.title)),
-      body: _helpPage ? helpArea : contentArea
+      body: _helpPage ? helpArea : FutureBuilder(future: initialize, builder: (context, snapshot) {
+        if (snapshot.data == null) {
+          return CircularProgressIndicator();
+        }
+        return contentArea;
+      })
   );
 }

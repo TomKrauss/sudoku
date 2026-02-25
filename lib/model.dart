@@ -148,7 +148,6 @@ class Games {
     printer: PrettyPrinter(stackTraceBeginIndex: 10000),
   );
   Games._() {
-    initialize();
   }
   static final Games _singleton = Games._();
   static final Matrix sample = Matrix.from([
@@ -193,11 +192,12 @@ class Games {
     games.add(game);
   }
 
-  Future<void> initialize() async {
+  Future<bool> initialize() async {
     await _initializePath();
     readHistory();
     addGame(Game(sample));
     current = games.last;
+    return true;
   }
 
   String asJson() {
