@@ -19,23 +19,25 @@ class _GridPaperPainter extends CustomPainter {
     final Paint linePaint = Paint()..color = color;
     linePaint.strokeCap = StrokeCap.round;
     final double allDivisions = (divisions * subdivisions).toDouble();
-    for (double x = 0.0; x <= size.width; x += interval / allDivisions) {
+    for (int x = 0; x <= allDivisions; x ++) {
       linePaint.strokeWidth =
-      (x % interval == 0.0)
+      (x % interval == 0)
           ? thick
-          : (x % (interval / subdivisions) == 0.0)
+          : (x % subdivisions == 0)
           ? 1.5
           : 0.5;
-      canvas.drawLine(Offset(x, 0.0), Offset(x, size.height), linePaint);
+      var xPos = x*interval/allDivisions;
+      canvas.drawLine(Offset(xPos, 0.0), Offset(xPos, size.height), linePaint);
     }
-    for (double y = 0.0; y <= size.height; y += interval / allDivisions) {
+    for (int y = 0; y <= allDivisions; y++) {
       linePaint.strokeWidth =
-      (y % interval == 0.0)
+      (y % interval == 0)
           ? thick
-          : (y % (interval / subdivisions) == 0.0)
+          : (y % subdivisions == 0)
           ? 1.5
           : 0.5;
-      canvas.drawLine(Offset(0.0, y+linePaint.strokeWidth/2), Offset(size.width, y), linePaint);
+      var yPos = y * size.height / allDivisions;
+      canvas.drawLine(Offset(0.0, yPos+linePaint.strokeWidth/2), Offset(size.width, yPos), linePaint);
     }
   }
 

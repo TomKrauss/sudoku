@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:logger/logger.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 
 extension ListExtension<T> on List<T> {
   List<T> getDuplicates() =>
@@ -161,7 +163,22 @@ class Games {
     [null, null, null, null, null, null, null, 7, null],
   ]);
   factory Games() => _singleton;
-  final String historyFile = "sudoku.json";
+  static String historyFile = "";
+
+  Future<void> _initializePath() async {
+    var file = historyFile;
+    if (file.isNotEmpty) {
+      return;
+    }
+    var name = "sudoku.json";
+    if (File(name).existsSync()) {
+      historyFile = name;
+      return;
+    }
+    name = join((await getApplicationDocumentsDirectory()).absolute.path, name);
+    historyFile = name;
+  }
+
   final List<Game> games = [];
   Game current = Game(sample);
 
@@ -176,7 +193,8 @@ class Games {
     games.add(game);
   }
 
-  void initialize() {
+  Future<void> initialize() async {
+    await _initializePath();
     readHistory();
     addGame(Game(sample));
     current = games.last;
@@ -212,7 +230,7 @@ class Games {
   void readHistory() {
     final file = File(historyFile);
     if (!file.existsSync()) {
-      logger.i("No history file found");
+      logger.i("No history file found. Was looking in ${file.absolute.path}");
       return;
     }
     var games = decodeGames(file.readAsStringSync());

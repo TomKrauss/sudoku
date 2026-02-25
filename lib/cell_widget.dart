@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sudoku/model.dart';
 
-double cellSize = 50;
 
 ///
 /// Widget displaying one cell in the Sudoku board.
@@ -10,8 +9,9 @@ double cellSize = 50;
 class CellWidget extends StatelessWidget {
   final bool showAlternatives;
   final FocusNode focusNode;
+  final double cellSize;
   const CellWidget(this.cell, this.onChanged,
-      {required this.showAlternatives, required this.focusNode, required this.editable, super.key, required this.onToggleCellMark});
+      {required this.showAlternatives, required this.focusNode, required this.editable, required this.cellSize, super.key, required this.onToggleCellMark});
   final Cell cell;
   final void Function(String? newVal)? onChanged;
   final void Function() onToggleCellMark;
