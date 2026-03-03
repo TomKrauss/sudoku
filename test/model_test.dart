@@ -50,6 +50,22 @@ void main() {
       expect(m2, isNotNull);
       expect(m2!.checkValid, true);
     });
+    test("Generation", () {
+      var m1 = Matrix.empty();
+      var m2 = m1.generateValidMatrix();
+      expect(m2, isNotNull);
+      var m3 = Matrix.parse(m2!.debugPrint());
+      expect(m3.checkValid, true);
+    });
+    test("Game Generation", () {
+      var m1 = Matrix.empty();
+      var nEmpty = 42;
+      var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
+      expect(m2, isNotNull);
+      var m3 = Matrix.parse(m2!.debugPrint());
+      expect(m3.checkValid, true);
+      expect(m2.valueCount, m2.gridCount*m2.gridCount-nEmpty);
+    });
     test("Comparison", () {
       var m1 = Matrix.empty();
       var m2 = Games.sample;

@@ -59,9 +59,11 @@ class Game {
   Matrix? _solvedMatrix;
 
   String? get name => matrix.name;
+
   set name(String? n) => matrix.name = n;
 
   set dirty(bool dirty) => matrix.dirty = dirty;
+
   bool get dirty => matrix.dirty;
 
   set gameMode(GameMode mode) {
@@ -82,11 +84,15 @@ class Game {
 
   Matrix? get current {
     switch (gameMode) {
-      case GameMode.playing: return playingMatrix;
-      case GameMode.creating: return matrix;
-      default: return solvedMatrix;
+      case GameMode.playing:
+        return playingMatrix;
+      case GameMode.creating:
+        return matrix;
+      default:
+        return solvedMatrix;
     }
   }
+
   Matrix get playingMatrix {
     _playingMatrix ??= Matrix.clone(matrix);
     return _playingMatrix!;
@@ -110,6 +116,7 @@ class Game {
   GameMode get gameMode => _mode;
 
   int get columnCount => matrix.columnCount;
+
   int get rowCount => matrix.rowCount;
 
   int get gridCount => matrix.gridCount;
@@ -119,13 +126,14 @@ class Game {
   @override
   bool operator ==(Object other) => other is Game && matrix == other.matrix;
 
-  Map<String,dynamic> asJson() => matrix.asJson();
+  Map<String, dynamic> asJson() => matrix.asJson();
 
   Matrix get currentNotNull => current ?? matrix;
 
   int get difficultyLevel => matrix.difficultyLevel;
 
-  bool isCellEditable(int x, int y) => current?.isCellEditable(x, y, gameMode == GameMode.creating) ?? false;
+  bool isCellEditable(int x, int y) =>
+      current?.isCellEditable(x, y, gameMode == GameMode.creating) ?? false;
 
   void editCellValue(Cell c, String? s) {
     currentNotNull.editCellValue(c, s, gameMode == GameMode.creating);
@@ -190,6 +198,16 @@ class Games {
     game.name ??= "Game ${DateTime.now().toIso8601String()}";
     games.removeWhere(((g) => g.name == game.name));
     games.add(game);
+  }
+
+  void generateGame({int numberOfEmptyPlaces = 57}) {
+    Matrix? m = Matrix.empty();
+    m = m.generateGame(numberOfEmptyPlaces: numberOfEmptyPlaces);
+    if (m != null) {
+      var g = Game(m);
+      addGame(g);
+      current = g;
+    }
   }
 
   Future<bool> initialize() async {
@@ -366,6 +384,118 @@ class Matrix {
     });
     return result;
   }
+
+  Matrix? generateGame({required int numberOfEmptyPlaces}) {
+    var m = generateValidMatrix();
+    if (m == null) {
+      return null;
+    }
+    var count = m.gridCount;
+    var p = Point<int>(0,0);
+    var rand = Random.secure();
+    for (var i = 0; i < numberOfEmptyPlaces; i++) {
+      var delta = rand.nextInt(count*count);
+      var x = p.x+delta;
+      var y = p.y;
+      while(x >= count) {
+        x -= count;
+        y++;
+        if (y >= count) {
+          y = 0;
+        }
+      }
+      var slot = m.findNextEmpty(y, x, empty: false);
+      slot ??= m.findNextEmpty(0, 0, empty: false);
+      if (slot == null) {
+        break;
+      }
+      p = Point(slot.col, slot.row);
+      var val = m.valueAt(p.y, p.x);
+      if (val == null) {
+        throw Exception("Did not move to empty slot ${slot.row} ${slot.col} ${p.y} ${p.x}");
+      }
+      m.setValue(p.y, p.x, null);
+      var tester = Matrix.clone(m);
+      if (tester.solve() == null) {
+        m.setValue(p.y, p.x, val);
+        i--;
+      }
+    }
+    m.cellsDo((cell, _, _) {
+      cell.given = cell.value != null;
+      cell.solved = false;
+      return true;
+    });
+    return m;
+  }
+
+  ///
+  /// Generate a new valid Sudoku Matrix.
+  ///
+  Matrix? generateValidMatrix() {
+    if (solved) {
+      return this;
+    }
+    if (!checkValid) {
+      return null;
+    }
+    return autoPlaceNewValue(col: 0, row: 0);
+  }
+
+  bool _isEmpty(Cell cell, bool empty) => empty ? cell.value == null : cell.value != null;
+
+  ({int row, int col})? findNextEmpty(int row, int col, {bool empty = true}) {
+    while(row < gridCount) {
+      while(col < gridCount) {
+        if (_isEmpty(cells[row][col], empty)) {
+          return (row: row, col: col);
+        }
+        col++;
+      }
+      if (col >= gridCount) {
+        row++;
+        col = 0;
+      } else {
+        break;
+      }
+    }
+    return null;
+  }
+
+  Matrix? autoPlaceNewValue({Random? rand, required int col, required int row}) {
+    var result = findNextEmpty(row, col);
+    if (result == null) {
+      return this;
+    }
+    rand ??= Random.secure();
+    row = result.row;
+    col = result.col;
+    var cellRow = rowValues(row);
+    var cellCol = colValues(col);
+    var cellBlock = blockValues(row, col);
+    var existing = cellRow.toSet();
+    existing.addAll(cellCol);
+    existing.addAll(cellBlock);
+    if (existing.length == 9) {
+      return null;
+    }
+    var avail = List.generate(gridCount, (index) => index+1);
+    for (final v in existing) {
+      avail.remove(v);
+    }
+    while(avail.isNotEmpty) {
+      var idx = rand.nextInt(avail.length);
+      cells[row][col].value = avail[idx];
+      var m = Matrix.clone(this);
+      var result = m.autoPlaceNewValue(col: col, row: row);
+      if (result != null) {
+        return result;
+      }
+      avail.removeAt(idx);
+    }
+    return null;
+  }
+
 
   ///
   /// Parse a string defining a Sudoku game with empty cells containing a placeholder character such as X or _
@@ -760,6 +890,20 @@ class Matrix {
   }
 
   ///
+  /// Returns the number of values (occupied places) in the matrix.
+  ///
+  int get valueCount {
+    var occupied = 0;
+    cellsDo((c, _, _) {
+      if (c.value != null) {
+        occupied++;
+      }
+      return true;
+    });
+    return occupied;
+  }
+
+  ///
   /// Solve a Sudoku game using back-tracking. Pretty trivial algorithm with few optimizations.
   ///
   Matrix? solve([int level = 0]) {
@@ -832,4 +976,8 @@ class Matrix {
       return true;
     });
   }
+
+  String debugPrint() =>
+    cells.map((row) => row.map((c) => "${c.value ?? 'x'}").join(" ")).join("\n");
+
 }

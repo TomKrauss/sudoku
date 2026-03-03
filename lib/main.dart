@@ -212,6 +212,13 @@ class _SudokuBoardState extends State<SudokuBoard> {
     return Point(newX, newY);
   }
 
+  void generateGame() {
+    setState(() {
+      games.generateGame();
+      model.gameMode = GameMode.playing;
+    });
+  }
+
   ///
   /// Set the focus to the 1st cell in the board.
   ///
@@ -372,6 +379,9 @@ class _SudokuBoardState extends State<SudokuBoard> {
             ElevatedButton(onPressed: () => edit(create: false),
                 style: buttonStyle,
                 child: Text("Play")),
+            ElevatedButton(onPressed: generateGame,
+                style: buttonStyle,
+                child: Text("Generate Game")),
             ElevatedButton(onPressed: showSolution,
                 style: buttonStyle,
                 child: Text(model.gameMode == GameMode.solved
