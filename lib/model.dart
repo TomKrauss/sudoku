@@ -155,8 +155,8 @@ class Games {
   static Logger logger = Logger(
     printer: PrettyPrinter(stackTraceBeginIndex: 10000),
   );
-  Games._() {
-  }
+  Games._();
+
   static final Games _singleton = Games._();
   static final Matrix sample = Matrix.from([
     [null, 3, null, null, null, null, null, null, null],
@@ -385,15 +385,18 @@ class Matrix {
     return result;
   }
 
-  Matrix? generateGame({required int numberOfEmptyPlaces}) {
-    var m = generateValidMatrix();
-    if (m == null) {
-      return null;
+  ///
+  /// Eliminate values in the matrix using back-tracking
+  ///
+  Matrix? tryToEliminateValue(Matrix m, Matrix originalMatrix, Random rand, int numberOfEmptyPlaces, Point<int> p) {
+    if (numberOfEmptyPlaces == 0) {
+      return m;
     }
+    numberOfEmptyPlaces--;
+    m = Matrix.clone(m);
     var count = m.gridCount;
-    var p = Point<int>(0,0);
-    var rand = Random.secure();
-    for (var i = 0; i < numberOfEmptyPlaces; i++) {
+    int retries = 0;
+    while(retries < 10) {
       var delta = rand.nextInt(count*count);
       var x = p.x+delta;
       var y = p.y;
@@ -416,10 +419,30 @@ class Matrix {
       }
       m.setValue(p.y, p.x, null);
       var tester = Matrix.clone(m);
-      if (tester.solve() == null) {
+      var solved = tester.solve();
+      if (solved == null || solved != originalMatrix) {
         m.setValue(p.y, p.x, val);
-        i--;
+      } else {
+        var result = tryToEliminateValue(m, originalMatrix, rand, numberOfEmptyPlaces, p);
+        if (result != null) {
+          return result;
+        }
       }
+      retries--;
+    }
+    return null;
+  }
+
+  Matrix? generateGame({required int numberOfEmptyPlaces}) {
+    var m = generateValidMatrix();
+    if (m == null) {
+      return null;
+    }
+    var originalMatrix = Matrix.clone(m);
+    var rand = Random.secure();
+    m = tryToEliminateValue(m, originalMatrix, rand, numberOfEmptyPlaces, Point<int>(0,0));
+    if (m == null) {
+      return null;
     }
     m.cellsDo((cell, _, _) {
       cell.given = cell.value != null;
@@ -920,8 +943,12 @@ class Matrix {
     }
     Matrix? m;
     while ((m = tryNextAlternative(row: cellPos.row, column: cellPos.column)) != null) {
-      var done = m!.solve(level + 1);
       _stepsToSolveGame++;
+      if (_stepsToSolveGame > 10000) {
+        Games.logger.i("Bailing out while solving a game after $_stepsToSolveGame iterations.");
+        return null;
+      }
+      var done = m!.solve(level + 1);
       if (done != null) {
         done.name = name;
         return done;

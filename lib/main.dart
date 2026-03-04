@@ -214,7 +214,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   void generateGame() {
     setState(() {
-      games.generateGame();
+      games.generateGame(numberOfEmptyPlaces: 53);
       model.gameMode = GameMode.playing;
     });
   }
