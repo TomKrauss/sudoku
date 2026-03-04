@@ -200,11 +200,14 @@ class Games {
     games.add(game);
   }
 
-  void generateGame({int numberOfEmptyPlaces = 57}) {
+  void generateGame({int numberOfEmptyPlaces = 57, String? name}) {
     Matrix? m = Matrix.empty();
     m = m.generateGame(numberOfEmptyPlaces: numberOfEmptyPlaces);
     if (m != null) {
       var g = Game(m);
+      if (name != null) {
+        g.name = name;
+      }
       addGame(g);
       current = g;
     }
@@ -945,7 +948,7 @@ class Matrix {
     while ((m = tryNextAlternative(row: cellPos.row, column: cellPos.column)) != null) {
       _stepsToSolveGame++;
       if (_stepsToSolveGame > 10000) {
-        Games.logger.i("Bailing out while solving a game after $_stepsToSolveGame iterations.");
+        Games.logger.w("Bailing out while solving a game after $_stepsToSolveGame iterations.");
         return null;
       }
       var done = m!.solve(level + 1);

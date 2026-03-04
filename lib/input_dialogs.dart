@@ -6,6 +6,72 @@ import 'package:sudoku/model.dart';
 
 const _defaultDialogTitle = "Sudoku";
 
+class GameGenerationOptions {
+  final String name;
+  final int level;
+  GameGenerationOptions({this.name = "New Game", this.level = 1});
+
+  int get numberOfEmptyPlaces {
+    switch(level) {
+      case 1: return 42;
+      case 2: return 49;
+      case 3: return 53;
+      default: return 57;
+    }
+  }
+}
+
+///
+/// A widget allowing to define a name and select a difficulty for
+/// a game to generate.
+///
+class GameGenerationOptionsSelectorWidget extends StatefulWidget {
+  final ValueNotifier<GameGenerationOptions> value;
+  const GameGenerationOptionsSelectorWidget({required this.value, super.key});
+
+  @override
+  State<GameGenerationOptionsSelectorWidget> createState() => _GameGenerationOptionsSelectorWidgetState();
+}
+
+class _GameGenerationOptionsSelectorWidgetState extends State<GameGenerationOptionsSelectorWidget> {
+  late final TextEditingController controller;
+
+  int get level => widget.value.value.level;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = TextEditingController(text: widget.value.value.name);
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(width: 400, height: 300, child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Game name"),
+          SizedBox(width: 20),
+          Flexible(child: TextField(controller: controller, onChanged: (s) {
+          widget.value.value = GameGenerationOptions(name: controller.text, level: level);
+        },))],),
+        SizedBox(height: 20),
+        Text("Game Difficulty"),
+        ValueListenableBuilder(valueListenable: widget.value, builder: (context, _, _) => Flexible(child:
+        RadioGroup(onChanged: (int? val) {
+          if (val != null) {
+            setState(() {
+              widget.value.value = GameGenerationOptions(name: widget.value.value.name, level: val);
+            });
+          }
+        }, groupValue: level,
+            child: Column(children: [
+          RadioListTile(value: 1, title: Text("Beginner Level")),
+          RadioListTile(value: 2, title: Text("Intermediate Level")),
+          RadioListTile(value: 3, title: Text("Expert Level")),
+          RadioListTile(value: 4, title: Text("Killer Level"))
+        ]))))]));
+}
+
 ///
 /// A widget displaying a list of games previously saved or added allowing
 /// to select one of the games.
@@ -87,9 +153,20 @@ Future<String?> showAlertDialog(BuildContext context, {String title = _defaultDi
 ///
 /// Show a dialog allowing to select a game.
 ///
-Future<String?> selectGame(BuildContext context, {String title = _defaultDialogTitle}) {
+Future<String?> selectGame(BuildContext context, {String title = _defaultDialogTitle}) async {
   final selection = ValueNotifier(Games().current.name ?? "game");
   final w = GameSelectorWidget(value: selection);
   return showContentDialog(title: title, context, content: w,
       getValue: () => selection.value);
+}
+
+
+Future<GameGenerationOptions?> selectGameDifficulty(BuildContext context, {String title = _defaultDialogTitle}) async {
+  final selection = ValueNotifier(GameGenerationOptions());
+  final w = GameGenerationOptionsSelectorWidget(value: selection);
+  if (await showContentDialog(title: title, context, content: w,
+      getValue: () => "OK") == "OK") {
+    return selection.value;
+  }
+  return null;
 }

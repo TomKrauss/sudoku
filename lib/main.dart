@@ -212,9 +212,13 @@ class _SudokuBoardState extends State<SudokuBoard> {
     return Point(newX, newY);
   }
 
-  void generateGame() {
+  Future<void> generateGame() async {
+    var options = await selectGameDifficulty(context);
+    if (options == null) {
+      return;
+    }
     setState(() {
-      games.generateGame(numberOfEmptyPlaces: 53);
+      games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces, name: options.name);
       model.gameMode = GameMode.playing;
     });
   }
@@ -256,7 +260,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
     }
   }
 
-  ButtonStyle get buttonStyle => ElevatedButton.styleFrom(minimumSize: Size(150, 35));
+  ButtonStyle get buttonStyle => ElevatedButton.styleFrom(minimumSize: Size(165, 35));
 
   Future<String> _loadHelpFile() => rootBundle.loadString("lib/assets/help.md");
 
@@ -381,7 +385,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
                 child: Text("Play")),
             ElevatedButton(onPressed: generateGame,
                 style: buttonStyle,
-                child: Text("Generate Game")),
+                child: Text("Generate Game...")),
             ElevatedButton(onPressed: showSolution,
                 style: buttonStyle,
                 child: Text(model.gameMode == GameMode.solved
