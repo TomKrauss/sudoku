@@ -43,7 +43,7 @@ class SudokuBoard extends StatefulWidget {
 
 class _SudokuBoardState extends State<SudokuBoard> {
   final Map<Point<int>, FocusNode> focusNodes = {};
-  bool _showAlternatives = false;
+  bool _showTips = false;
   final games = Games();
   Game get model => games.current;
   bool _helpPage = false;
@@ -176,7 +176,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   /// check the validity of the matrix and alternate values for each cell.
   ///
   void onCurrentGameChanged() {
-    if (_showAlternatives) {
+    if (_showTips) {
       setState(() {
         model.onChanged();
       });
@@ -328,7 +328,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
                                       : null,
                                   cellSize: cellSize,
                                   focusNode: forCell(model.placementOf(c)),
-                                  showAlternatives: _showAlternatives,
+                                  showTips: _showTips || model.gameMode == GameMode.solved,
                                   editable: editing &&
                                       (creatingGame || !c.given),
                                   onToggleCellMark: () {
@@ -362,12 +362,12 @@ class _SudokuBoardState extends State<SudokuBoard> {
               child: CheckboxListTile(
                 onChanged: (v) {
                   setState(() {
-                    _showAlternatives = v == true;
+                    _showTips = v == true;
                   });
                   onCurrentGameChanged();
                 },
-                value: _showAlternatives,
-                title: Text("Show Alternatives"),
+                value: _showTips,
+                title: Text("Show Tips"),
               ),
             ),
           ],

@@ -23,6 +23,13 @@ class Cell {
   /// Whether this cell was solved as part of solving the Sudoku.
   ///
   bool solved = false;
+
+  ///
+  /// Can be assigned by the system to mark a cell, which was solved
+  /// by the user was solved in a wrong way.
+  ///
+  bool falselySolved = false;
+
   ///
   /// Whether this cell contains a value causing a duplicate.
   ///
@@ -79,6 +86,9 @@ class Game {
       return;
     }
     matrix.recalculateAlternatives();
+    if (_playingMatrix != null) {
+      matrix.markFalselyManualSolvedCells(_playingMatrix!);
+    }
     matrix.checkValid;
   }
 
@@ -553,6 +563,17 @@ class Matrix {
   }
 
   ///
+  /// Mark a cell which was solved by the user the wrong way to mark it in the UI.
+  ///
+  void markFalselyManualSolvedCells(Matrix mWithManualSolution) {
+    cellsDo((cell, row, col) {
+      Cell other = mWithManualSolution.cells[row][col];
+      cell.falselySolved = !other.given && other.value != null && other.value != cell.value;
+      return true;
+    });
+  }
+
+  ///
   /// Add a list of cells with a given [size].
   ///
   void _addCells(int size) {
@@ -666,9 +687,10 @@ class Matrix {
       if (cell.solved) {
         cell.value = null;
         cell.solved = false;
-        cell.hasError = false;
         cell.alternatives.clear();
       }
+      cell.hasError = false;
+      cell.falselySolved = false;
       return true;
     });
   }

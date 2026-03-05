@@ -7,11 +7,11 @@ import 'package:sudoku/model.dart';
 /// Widget displaying one cell in the Sudoku board.
 ///
 class CellWidget extends StatelessWidget {
-  final bool showAlternatives;
+  final bool showTips;
   final FocusNode focusNode;
   final double cellSize;
   const CellWidget(this.cell, this.onChanged,
-      {required this.showAlternatives, required this.focusNode, required this.editable, required this.cellSize, super.key, required this.onToggleCellMark});
+      {required this.showTips, required this.focusNode, required this.editable, required this.cellSize, super.key, required this.onToggleCellMark});
   final Cell cell;
   final void Function(String? newVal)? onChanged;
   final void Function() onToggleCellMark;
@@ -32,7 +32,10 @@ class CellWidget extends StatelessWidget {
   ) : null;
 
   Color get textColor {
-    if (cell.hasError) {
+    if (showTips && cell.falselySolved) {
+      return Colors.purple;
+    }
+    if (showTips && cell.hasError) {
       return Colors.red;
     }
     if (cell.given) {
@@ -44,7 +47,7 @@ class CellWidget extends StatelessWidget {
     return Colors.blueGrey;
   }
 
-  Widget get contentWidget => cell.value == null && showAlternatives
+  Widget get contentWidget => cell.value == null && showTips
       ? (Wrap(
     children: cell.alternatives
         .map((i) => Text(" $i ", style: TextStyle(fontSize: 10)))
