@@ -28,7 +28,11 @@ class Cell {
   /// Can be assigned by the system to mark a cell, which was solved
   /// by the user was solved in a wrong way.
   ///
-  bool falselySolved = false;
+  bool get falselySolved => falseGuess != null;
+  ///
+  /// A possible false guess value entered by the player.
+  ///
+  int? falseGuess;
 
   ///
   /// Whether this cell contains a value causing a duplicate.
@@ -568,7 +572,9 @@ class Matrix {
   void markFalselyManualSolvedCells(Matrix mWithManualSolution) {
     cellsDo((cell, row, col) {
       Cell other = mWithManualSolution.cells[row][col];
-      cell.falselySolved = !other.given && other.value != null && other.value != cell.value;
+      if (!other.given && other.value != null && other.value != cell.value) {
+        cell.falseGuess = other.value;
+      }
       return true;
     });
   }
@@ -690,7 +696,7 @@ class Matrix {
         cell.alternatives.clear();
       }
       cell.hasError = false;
-      cell.falselySolved = false;
+      cell.falseGuess = null;
       return true;
     });
   }

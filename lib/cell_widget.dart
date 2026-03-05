@@ -47,19 +47,26 @@ class CellWidget extends StatelessWidget {
     return Colors.blueGrey;
   }
 
+  TextStyle get textStyle => TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+    color: textColor,
+  );
+
+  Widget get falseGuessWidget => Row(mainAxisAlignment: MainAxisAlignment.center,
+    children: [Text("${cell.falseGuess}", style: TextStyle(decoration: TextDecoration.lineThrough), ),
+    Icon(Icons.arrow_right_alt, size: 12,),
+    Text("${cell.value}", style: textStyle,)],);
+
   Widget get contentWidget => cell.value == null && showTips
       ? (Wrap(
     children: cell.alternatives
         .map((i) => Text(" $i ", style: TextStyle(fontSize: 10)))
         .toList(),
   ))
-      : Text(
+      : cell.falseGuess != null ? falseGuessWidget : Text(
     "${cell.value ?? ''}",
-    style: TextStyle(
-      fontSize: 18,
-      fontWeight: FontWeight.bold,
-      color: textColor,
-    ),
+    style: textStyle,
   );
 
   @override
