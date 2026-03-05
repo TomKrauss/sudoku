@@ -6,9 +6,9 @@ import 'package:logger/logger.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
-extension ListExtension<T> on List<T> {
-  List<T> getDuplicates() =>
-      where((x) => where((y) => x == y).length > 1).toList();
+extension ListExtension<T> on Iterable<T> {
+  Iterable<T> getDuplicates() =>
+      where((x) => where((y) => x == y).toList().length > 1);
 }
 
 ///
@@ -411,45 +411,38 @@ class Matrix {
     }
     numberOfEmptyPlaces--;
     m = Matrix.clone(m);
-    var count = m.gridCount;
-    int retries = 0;
-    while(retries < 10) {
-      var delta = rand.nextInt(count*count);
-      var x = p.x+delta;
-      var y = p.y;
-      while(x >= count) {
-        x -= count;
-        y++;
-        if (y >= count) {
-          y = 0;
-        }
+    var nonEmptySlots = <Point<int>>[];
+    m.cellsDo((cell, row, column) {
+      if (cell.value != null) {
+        nonEmptySlots.add(Point(column, row));
       }
-      var slot = m.findNextEmpty(y, x, empty: false);
-      slot ??= m.findNextEmpty(0, 0, empty: false);
-      if (slot == null) {
-        break;
-      }
-      p = Point(slot.col, slot.row);
+      return true;
+    });
+    while(nonEmptySlots.isNotEmpty) {
+      p = nonEmptySlots[rand.nextInt(nonEmptySlots.length)];
       var val = m.valueAt(p.y, p.x);
       if (val == null) {
-        throw Exception("Did not move to empty slot ${slot.row} ${slot.col} ${p.y} ${p.x}");
+        throw Exception("Did not move to empty slot ${p.x} ${p.y}");
       }
       m.setValue(p.y, p.x, null);
       var tester = Matrix.clone(m);
       var solved = tester.solve();
-      if (solved == null || solved != originalMatrix) {
-        m.setValue(p.y, p.x, val);
-      } else {
+      if (solved == originalMatrix) {
         var result = tryToEliminateValue(m, originalMatrix, rand, numberOfEmptyPlaces, p);
         if (result != null) {
           return result;
         }
       }
-      retries--;
+      m.setValue(p.y, p.x, val);
+      nonEmptySlots.remove(p);
     }
     return null;
   }
 
+  ///
+  /// Generate a game matrix.
+  ///
+  // TODO(tom.krauss): potentially very slow for more than 58 empty places due to back-tracking algorithm.
   Matrix? generateGame({required int numberOfEmptyPlaces}) {
     var m = generateValidMatrix();
     if (m == null) {
@@ -701,11 +694,19 @@ class Matrix {
     });
   }
 
-  List<int> rowValues(int row) =>
-      cells[row].map((c) => c.value).nonNulls.toList();
-  List<int> colValues(int col) =>
-      cells.map((c) => c[col]).map((c) => c.value).nonNulls.toList();
-  List<Cell> blockCells(int row, int col) {
+  Iterable<int> rowValues(int row) =>
+      cells[row].map((c) => c.value).nonNulls;
+  Iterable<int> colValues(int col) =>
+      cells.map((c) => c[col]).map((c) => c.value).nonNulls;
+  void blockCellsDo(int row, int col, void Function(Cell cell) callback) {
+    for (int r = row ~/ 3 * 3; r < row ~/ 3 * 3 + 3; r++) {
+      for (int c = col ~/ 3 * 3; c < col ~/ 3 * 3 + 3; c++) {
+        callback(cells[r][c]);
+      }
+    }
+  }
+
+  Iterable<Cell> blockCells(int row, int col) {
     var result = <Cell>[];
     for (int r = row ~/ 3 * 3; r < row ~/ 3 * 3 + 3; r++) {
       for (int c = col ~/ 3 * 3; c < col ~/ 3 * 3 + 3; c++) {
@@ -718,8 +719,15 @@ class Matrix {
   ///
   /// Returns all values contained in a cell block 3x3.
   ///
-  List<int> blockValues(int row, int col) =>
-      blockCells(row, col).map((c) => c.value).nonNulls.toList();
+  Iterable<int> blockValues(int row, int col) {
+    var values = <int>{};
+    blockCellsDo(row, col, (c) {
+      if (c.value != null) {
+        values.add(c.value!);
+      }
+    });
+    return values;
+  }
 
   ///
   /// Execute a callback [f] for each cell of our Sudoku game.
@@ -751,7 +759,7 @@ class Matrix {
     for (int r = 0; r < cells.length; r += 3) {
       for (int c = 0; c < cells[0].length; c += 3) {
         final cells = blockCells(r, c);
-        if (!callback(cells)) {
+        if (!callback(cells.toList())) {
           return;
         }
       }
@@ -766,7 +774,7 @@ class Matrix {
     var valid = true;
     for (int r = 0; r < cells.length; r++) {
       var v = rowValues(r);
-      var duplicates = v.getDuplicates();
+      var duplicates = v.toList().getDuplicates();
       if (duplicates.isNotEmpty) {
         valid = false;
         for (final cell in cells[r]) {
@@ -778,7 +786,7 @@ class Matrix {
     }
     for (int c = 0; c < cells[0].length; c++) {
       var v = colValues(c);
-      var duplicates = v.getDuplicates();
+      var duplicates = v.toList().getDuplicates();
       if (duplicates.isNotEmpty) {
         valid = false;
         for (final cell in cells.map((cells) => cells[c])) {
@@ -791,7 +799,7 @@ class Matrix {
     for (int r = 0; r < cells.length; r += 3) {
       for (int c = 0; c < cells[0].length; c += 3) {
         var v = blockValues(r, c);
-        var duplicates = v.getDuplicates();
+        var duplicates = v.toList().getDuplicates();
         if (duplicates.isNotEmpty) {
           valid = false;
           for (final cell in blockCells(r, c)) {
@@ -806,8 +814,9 @@ class Matrix {
   }
 
   bool calculateAlternatives(int row, int col) {
-    if (cells[row][col].value != null) {
-      cells[row][col].alternatives = [];
+    var cell = cells[row][col];
+    if (cell.value != null) {
+      cell.alternatives = [];
       return true;
     }
     var selected = <int>{
@@ -817,7 +826,7 @@ class Matrix {
     };
     final a = List<int>.generate(9, (index) => index + 1).toSet();
     a.removeAll(selected);
-    cells[row][col].alternatives = a.toList();
+    cell.alternatives = a.toList();
     return true;
   }
 
@@ -825,20 +834,34 @@ class Matrix {
   /// Returns a row of cells. [rowNumber] must lay within the size of the matrix
   ///
   List<Cell> rowAt(int rowNumber) => cells[rowNumber];
+
+  ///
+  /// For Fast access of the grid column cells.
+  ///
+  final List<List<Cell>?> _columns = [];
+
   ///
   /// Returns a column of cells. [columnNumber] must lay within the size of the matrix
   ///
-  List<Cell> columnAt(int columnNumber) => cells.map((l) => l[columnNumber]).toList();
+  List<Cell> columnAt(int columnNumber) {
+    if (_columns.isEmpty) {
+      for (int i = 0; i < gridCount; i++) {
+        var list = cells.map((l) => l[columnNumber]).toList();
+        _columns.add(list);
+      }
+    }
+    return _columns[columnNumber]!;
+  }
 
   ///
   /// Tries to find rows / columns / a block of cells where only one cell is not resolved - in
   /// that case fill in the last missing value.
   ///
   bool addLastValueToGroup(List<Cell> cells) {
-    Cell? candidate;
-    List<int> values = cells.where((c) => c.value != null).map((c) => c.value!).toList();
-    if (values.length == rowCount-1) {
-      candidate = cells.firstWhere((c) => c.value == null);
+    var empty = cells.where((c) => c.value == null);
+    if (empty.length == 1) {
+      var values = cells.map((c) => c.value);
+      var candidate = empty.first;
       for (int i = 1; i <= rowCount; i++) {
         if (!values.contains(i)) {
           candidate.value = i;
@@ -857,8 +880,9 @@ class Matrix {
   void resolveDeterministicCases() {
     bool resolved = true;
     while (resolved) {
+      recalculateAlternatives();
       resolved = false;
-      cellsDo((cell, _, _) {
+      cellsDo((cell, row, column) {
         if (cell.alternatives.length == 1) {
           cell.value = cell.alternatives.first;
           cell.solved = true;
@@ -884,7 +908,6 @@ class Matrix {
         }
         return true;
       });
-      recalculateAlternatives();
     }
   }
 

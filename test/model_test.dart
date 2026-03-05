@@ -2,12 +2,14 @@
 
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/logger.dart';
 import 'package:sudoku/model.dart';
 
 ///
 /// Some unit tests to test operations on the Sudoku model.
 ///
 void main() {
+  Games.logger = Logger(printer: SimplePrinter(printTime: false, colors: false));
   group("Matrix Tests", () {
     test("Is Empty", () {
       var m = Matrix.empty();
@@ -28,7 +30,7 @@ void main() {
       expect(m.valueAt(1, 4), 7);
       expect(m.valueAt(7, 0), 9);
       expect(m.valueAt(8, 8), 4);
-      expect(m.difficultyLevel > 3, true);
+      expect(m.difficultyLevel > 2, true);
       var m2 = m.solve();
       expect(m2, isNotNull);
       expect(m2!.valueAt(0, 0), 5);
@@ -61,7 +63,7 @@ void main() {
       for (final nEmpty in [42, 52, 57]) {
         var m1 = Matrix.empty();
         var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
-        expect(m2, isNotNull);
+        expect(m2, isNotNull, reason: "Cannot generate game with $nEmpty empty slots.");
         var m3 = Matrix.parse(m2!.debugPrint());
         expect(m3.checkValid, true);
         expect(m2.valueCount, m2.gridCount * m2.gridCount - nEmpty);

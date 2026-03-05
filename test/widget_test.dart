@@ -9,12 +9,15 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/logger.dart';
 import 'package:sudoku/main.dart';
+import 'package:sudoku/model.dart';
 
 ///
 /// Component test of the Sudoku application.
 ///
 void main() {
+  Games.logger = Logger(printer: SimplePrinter(printTime: false, colors: false));
   testWidgets('Sudoko Application smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.binding.setSurfaceSize(const Size(1020, 1020));
