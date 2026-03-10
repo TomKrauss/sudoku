@@ -796,6 +796,18 @@ class Matrix {
         }
       }
     }
+    blocksDo((blockCells) {
+      var duplicates = blockCells.where((cell) => cell.value != null).map((cell) => cell.value).getDuplicates();
+      if (duplicates.isNotEmpty) {
+        valid = false;
+        for (final cell in blockCells) {
+          if (duplicates.contains(cell.value)) {
+            cell.hasError = true;
+          }
+        }
+      }
+      return true;
+    });
     for (int r = 0; r < cells.length; r += 3) {
       for (int c = 0; c < cells[0].length; c += 3) {
         var v = blockValues(r, c);
@@ -874,19 +886,37 @@ class Matrix {
     return false;
   }
 
+  void cellResolved(Cell cell, int row, int column) {
+    cell.alternatives.remove(cell.value);
+    var colCells = columnAt(column);
+    for (final cell in colCells) {
+      cell.alternatives.remove(cell.value);
+    }
+    var rowCells = rowAt(column);
+    for (final cell in rowCells) {
+      cell.alternatives.remove(cell.value);
+    }
+    var cells = blockCells(row, column);
+    for (final cell in cells) {
+      cell.alternatives.remove(cell.value);
+    }
+  }
+
   ///
   /// Resolve the obvious cases of a Sudoko game before entering expensive back-tracking.
   ///
   void resolveDeterministicCases() {
     bool resolved = true;
+    recalculateAlternatives();
     while (resolved) {
-      recalculateAlternatives();
       resolved = false;
+      var rowColBlockResolved = false;
       cellsDo((cell, row, column) {
         if (cell.alternatives.length == 1) {
           cell.value = cell.alternatives.first;
           cell.solved = true;
           resolved = true;
+          cellResolved(cell, row, column);
         }
         return true;
       });
@@ -894,20 +924,26 @@ class Matrix {
         var list = rowAt(i);
         if (addLastValueToGroup(list)) {
           resolved = true;
+          rowColBlockResolved = true;
         }
       }
       for (int i = 0; i < columnCount; i++) {
         var list = columnAt(i);
         if (addLastValueToGroup(list)) {
           resolved = true;
+          rowColBlockResolved = true;
         }
       }
       blocksDo((cells) {
         if (addLastValueToGroup(cells)) {
           resolved = true;
+          rowColBlockResolved = true;
         }
         return true;
       });
+      if (rowColBlockResolved) {
+        recalculateAlternatives();
+      }
     }
   }
 
@@ -935,7 +971,7 @@ class Matrix {
     for (int r = 0; r < cells.length; r++) {
       for (int c = 0; c < cells[r].length; c++) {
         var cell = cells[r][c];
-        if (cell.value != null) {
+        if (cell.value != null || cell.alternatives.length < 2) {
           continue;
         }
         var nAlternatives = cell.alternatives.length;
@@ -988,6 +1024,10 @@ class Matrix {
     if (!checkValid) {
       return null;
     }
+    if (_stepsToSolveGame > 20000) {
+      Games.logger.w("Bailing out while solving a game after $_stepsToSolveGame iterations.");
+      return null;
+    }
     if (solved) {
       return this;
     }
@@ -998,10 +1038,6 @@ class Matrix {
     Matrix? m;
     while ((m = tryNextAlternative(row: cellPos.row, column: cellPos.column)) != null) {
       _stepsToSolveGame++;
-      if (_stepsToSolveGame > 10000) {
-        Games.logger.w("Bailing out while solving a game after $_stepsToSolveGame iterations.");
-        return null;
-      }
       var done = m!.solve(level + 1);
       if (done != null) {
         done.name = name;
