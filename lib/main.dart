@@ -301,6 +301,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
               child: CustomGridPaper(
                 divisions: 3,
                 subdivisions: 3,
+                color: (!_showTips || model.current?.solvable == true) ? Colors.black : Colors.red,
                 interval: model.gridCount * cellSize,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
