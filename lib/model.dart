@@ -406,7 +406,7 @@ class Matrix {
   /// Eliminate values in the matrix using back-tracking
   ///
   Matrix? tryToEliminateValue(Matrix m, Matrix originalMatrix, Random rand, int numberOfEmptyPlaces, Point<int> p) {
-    if (numberOfEmptyPlaces == 0) {
+    if (numberOfEmptyPlaces <= 0) {
       return m;
     }
     numberOfEmptyPlaces--;
@@ -549,6 +549,9 @@ class Matrix {
     size ??= defaultSize;
     _addCells(size);
     var tokens = s.split(RegExp("\\s+"));
+    if (tokens.length < defaultSize*defaultSize) {
+      throw Exception("Not enough tokens in matrix definition ${tokens.length}");
+    }
     for (int i = 0; i < defaultSize; i++) {
       for (int j = 0; j < defaultSize; j++) {
         int idx = i * defaultSize + j;
@@ -640,9 +643,12 @@ class Matrix {
 
   ///
   /// Calculate the possible alternatives to be used for a cell.
+  /// Return [true] if the matrix is solvable and [false] otherwise.
   ///
   void recalculateAlternatives() {
-    cellsDo((cell, r, c) => calculateAlternatives(r, c));
+    if (!cellsDo((cell, r, c) => calculateAlternatives(r, c))) {
+      return;
+    }
     for (var i = 0; i < rowCount; i++) {
       var row = cells[i];
       eliminateAlternativePairs(row);
@@ -733,14 +739,15 @@ class Matrix {
   /// Execute a callback [f] for each cell of our Sudoku game.
   /// If the callback returns false, execution completes.
   ///
-  void cellsDo(bool Function(Cell cell, int row, int column) f) {
+  bool cellsDo(bool Function(Cell cell, int row, int column) f) {
     for (int r = 0; r < cells.length; r++) {
       for (int c = 0; c < cells[r].length; c++) {
         if (!f(cells[r][c], r, c)) {
-          break;
+          return false;
         }
       }
     }
+    return true;
   }
 
   bool get solved {
@@ -825,6 +832,9 @@ class Matrix {
     return valid;
   }
 
+  ///
+  /// Return [false] if the cell cannot be solved any more.
+  ///
   bool calculateAlternatives(int row, int col) {
     var cell = cells[row][col];
     if (cell.value != null) {
@@ -838,6 +848,9 @@ class Matrix {
     };
     final a = List<int>.generate(9, (index) => index + 1).toSet();
     a.removeAll(selected);
+    if (a.isEmpty) {
+      return false;
+    }
     cell.alternatives = a.toList();
     return true;
   }
@@ -903,11 +916,20 @@ class Matrix {
   }
 
   ///
-  /// Resolve the obvious cases of a Sudoko game before entering expensive back-tracking.
+  /// Answers true, if the matrix is solvable at all. Before calling this method you must call recalculateAlternatives().
   ///
-  void resolveDeterministicCases() {
+  bool get solvable => cells.expand((l) => l).where((c) => c.value == null && c.alternatives.isEmpty).isEmpty;
+
+  ///
+  /// Resolve the obvious cases of a Sudoko game before entering expensive back-tracking.
+  /// Return false if the matrix is not solvable.
+  ///
+  bool resolveDeterministicCases() {
     bool resolved = true;
     recalculateAlternatives();
+    if (!solvable) {
+      return false;
+    }
     while (resolved) {
       resolved = false;
       var rowColBlockResolved = false;
@@ -945,6 +967,7 @@ class Matrix {
         recalculateAlternatives();
       }
     }
+    return solvable;
   }
 
   Matrix? tryNextAlternative({required int row, required int column}) {
@@ -995,7 +1018,6 @@ class Matrix {
   bool get isEmpty => !cells.any((r) => r.any((c) => c.value != null));
 
   int get difficultyLevel {
-    _stepsToSolveGame = 0;
     var m = Matrix.clone(this);
     m.clearGuesses();
     m.solve();
@@ -1019,12 +1041,24 @@ class Matrix {
   ///
   /// Solve a Sudoku game using back-tracking. Pretty trivial algorithm with few optimizations.
   ///
-  Matrix? solve([int level = 0]) {
-    resolveDeterministicCases();
-    if (!checkValid) {
+  Matrix? solve() {
+    _stepsToSolveGame = 0;
+    return _solve(0);
+  }
+
+  bool get bailedOut => _stepsToSolveGame > 100;
+
+  ///
+  /// Solve a Sudoku game using back-tracking. Pretty trivial algorithm with few optimizations.
+  ///
+  Matrix? _solve([int level = 0]) {
+    if (!resolveDeterministicCases()) {
       return null;
     }
-    if (_stepsToSolveGame > 20000) {
+    if (!checkValid || !solvable) {
+      return null;
+    }
+    if (bailedOut) {
       Games.logger.w("Bailing out while solving a game after $_stepsToSolveGame iterations.");
       return null;
     }
@@ -1038,10 +1072,13 @@ class Matrix {
     Matrix? m;
     while ((m = tryNextAlternative(row: cellPos.row, column: cellPos.column)) != null) {
       _stepsToSolveGame++;
-      var done = m!.solve(level + 1);
+      var done = m!._solve(level + 1);
       if (done != null) {
         done.name = name;
         return done;
+      }
+      if (bailedOut) {
+        return null;
       }
     }
     return null;
@@ -1095,6 +1132,6 @@ class Matrix {
   }
 
   String debugPrint() =>
-    cells.map((row) => row.map((c) => "${c.value ?? 'x'}").join(" ")).join("\n");
+    cells.map((row) => row.map((c) => "${c.value ?? 'x'} ").join("")).join("\n");
 
 }

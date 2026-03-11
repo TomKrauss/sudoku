@@ -15,6 +15,20 @@ void main() {
       var m = Matrix.empty();
       expect(m.isEmpty, isTrue);
     });
+    test("Unsolvable", () {
+      var m = Matrix.parse(
+        "7 8 x x x x x 2 x "
+        "4 2 x x x 3 x 7 x "
+        "9 3 x x x x 8 6 x "
+        "1 7 4 9 8 2 3 5 6 "
+        "6 9 3 1 7 5 4 8 2 "
+        "2 5 8 4 3 6 7 1 9 "
+        "5 4 7 3 2 x 6 9 x "
+        "8 6 x x x x x 3 x "
+        "3 1 x x x x x 4 x ");
+      var solved = m.solve();
+      expect(solved, isNotNull);
+    });
     test("Parse", () {
       var m = Matrix.parse(
           "_ _ _ 8 3 _ _ _ _ "
@@ -60,13 +74,18 @@ void main() {
       expect(m3.checkValid, true);
     });
     test("Game Generation", () {
-      for (final nEmpty in [42, 52, 57]) {
+      for (final nEmpty in [42, 52, 57, 58, 60]) {
         var m1 = Matrix.empty();
         var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
-        expect(m2, isNotNull, reason: "Cannot generate game with $nEmpty empty slots.");
-        var m3 = Matrix.parse(m2!.debugPrint());
-        expect(m3.checkValid, true);
-        expect(m2.valueCount, m2.gridCount * m2.gridCount - nEmpty);
+        if (nEmpty < 58) {
+          expect(m2, isNotNull,
+              reason: "Cannot generate game with $nEmpty empty slots.");
+          var m3 = Matrix.parse(m2!.debugPrint());
+          expect(m3.checkValid, true);
+          expect(m2.valueCount, m2.gridCount * m2.gridCount - nEmpty);
+        } else if (m2 != null) {
+          Games.logger.i("Created valid Game Matrix with $nEmpty empty slots");
+        }
       }
     });
     test("Comparison", () {
