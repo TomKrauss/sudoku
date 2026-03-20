@@ -218,7 +218,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
       return;
     }
     setState(() {
-      games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces, name: options.name);
+      games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces, name: options.name, size: options.gridSize);
       model.gameMode = GameMode.playing;
     });
   }
@@ -278,7 +278,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
   Widget get contentArea {
     var width = (MediaQuery.widthOf(context) - 50);
     var height = (MediaQuery.heightOf(context) - 300);
-    var cellSize = (height > width ? width : height) / games.current.gridCount;
+    var cellSize = (height > width ? width : height) / model.gridCount;
+    var matrix = model.current;
     return SingleChildScrollView(child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -286,10 +287,10 @@ class _SudokuBoardState extends State<SudokuBoard> {
             child: CallbackShortcuts(
               bindings: <ShortcutActivator, VoidCallback>{
                 const SingleActivator(LogicalKeyboardKey.arrowUp): () {
-                  moveCellFocusBy(-games.current.columnCount);
+                  moveCellFocusBy(-model.columnCount);
                 },
                 const SingleActivator(LogicalKeyboardKey.arrowDown): () {
-                  moveCellFocusBy(games.current.columnCount);
+                  moveCellFocusBy(model.columnCount);
                 },
                 const SingleActivator(LogicalKeyboardKey.arrowRight): () {
                   moveCellFocusBy(1);
@@ -299,8 +300,9 @@ class _SudokuBoardState extends State<SudokuBoard> {
                 },
               },
               child: CustomGridPaper(
-                divisions: 3,
-                subdivisions: 3,
+                divisions: model.gridCount,
+                majorGridColumnBreaks: matrix?.blockColumnBreaks ?? [3,6],
+                majorGridRowBreaks: matrix?.blockRowBreaks ?? [3,6],
                 color: (!_showTips || model.current?.solvable == true) ? Colors.black : Colors.red,
                 interval: model.gridCount * cellSize,
                 child: Column(

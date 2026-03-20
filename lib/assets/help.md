@@ -2,7 +2,9 @@
 
 ## Introduction
 
-Supports editing and solving Sudoku puzzles.
+Supports editing and solving Sudoku puzzles. Puzzles of different sizes are supported. 
+One can play normal Sudokus with 9 numbers or Mini Sudokus with 6 Numbers. We are working
+also on the possibility to play Sudokus with 12x12 or 25x25 numbers.
 
 ## How to use
 

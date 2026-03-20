@@ -3,6 +3,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logger/logger.dart';
+import 'package:sudoku/matrix.dart';
 import 'package:sudoku/model.dart';
 
 ///
@@ -14,6 +15,40 @@ void main() {
     test("Is Empty", () {
       var m = Matrix.empty();
       expect(m.isEmpty, isTrue);
+    });
+    test("Block Cells", () {
+      var m = Matrix.parse(
+          "_ _ _ 8 3 _ _ _ _ "
+          "_ _ _ _ 7 4 _ 5 _ "
+          "_ _ _ _ _ _ _ _ _ "
+          "_ _ 4 _ _ 6 _ _ 8 "
+          "2 _ _ _ 8 _ _ _ 9 "
+          "_ 6 _ 1 _ 2 4 _ _ "
+          "_ _ 5 7 _ _ 9 _ 3 "
+          "9 8 _ _ _ _ _ _ 5 "
+          "_ _ 1 _ 6 5 _ _ 4 "
+      );
+      var cellValues = <List<int>>[];
+      m.blocksDo((list) {
+        cellValues.add(list.where((c) => c.value != null).map((c) => c.value!).toList());
+        return true;
+      });
+      expect(cellValues.length, 9);
+      expect(cellValues[0], <int>[]);
+      expect(cellValues[1], <int>[8,3,7,4]);
+      expect(cellValues[2], <int>[5]);
+      expect(cellValues[3], <int>[4,2,6]);
+      expect(cellValues[4], <int>[6,8,1,2]);
+      expect(m.blockValues(0, 3), <int>[8,3,7,4]);
+      expect(m.blockValues(0, 4), <int>[8,3,7,4]);
+      expect(m.blockValues(0, 5), <int>[8,3,7,4]);
+      expect(m.blockValues(2, 5), <int>[8,3,7,4]);
+      expect(m.blockValues(0, 2), <int>[]);
+      expect(m.blockValues(2, 2), <int>[]);
+      expect(m.blockValues(3, 2), <int>[4,2,6]);
+      expect(m.blockValues(6, 2), <int>[5,9,8,1]);
+      expect(m.blockValues(8, 2), <int>[5,9,8,1]);
+      expect(m.blockValues(8, 0), <int>[5,9,8,1]);
     });
     test("Unsolvable", () {
       var m = Matrix.parse(
@@ -28,6 +63,35 @@ void main() {
         "3 1 x x x x x 4 x ");
       var solved = m.solve();
       expect(solved, isNotNull);
+
+      m = Matrix.parse(
+          "x x x x x 4 x x 6 "
+          "x x x 2 x 1 x 9 x "
+          "x x 1 x 7 x 8 x x "
+          "x 6 x x x x x 2 x "
+          "3 5 x x x x x x 8 "
+          "x x x x x x 3 7 x "
+          "x x 9 x 8 x 5 x x "
+          "x 4 x 3 x 2 x x x "
+          "7 x x 1 x x x x x ");
+      solved = m.solve();
+      expect(solved, isNull);
+    });
+    test("Mini Sudoku", () {
+      var m = Matrix.parse(
+          "x x x x x 4 "
+          "x x 3 x 2 x "
+          "2 x x x x 5 "
+          "1 x x x x 3 "
+          "x 1 x 5 x x "
+          "5 x x x x x ");
+      expect(m.gridCount, 6);
+      expect(m.blockRowBreaks, [2,4]);
+      var m2 = Matrix.clone(m);
+      expect(m2.gridCount, 6);
+      expect(m2.blockRowBreaks, [2,4]);
+      var mSolved = m2.solve();
+      expect(mSolved, isNotNull);
     });
     test("Parse", () {
       var m = Matrix.parse(

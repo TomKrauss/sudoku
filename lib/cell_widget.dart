@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:sudoku/model.dart';
+import 'package:sudoku/matrix.dart';
 
 
 ///

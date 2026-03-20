@@ -9,7 +9,8 @@ const _defaultDialogTitle = "Sudoku";
 class GameGenerationOptions {
   final String name;
   final int level;
-  GameGenerationOptions({this.name = "New Game", this.level = 1});
+  final int gridSize;
+  GameGenerationOptions({this.name = "New Game", this.level = 1, this.gridSize = 9});
 
   int get numberOfEmptyPlaces {
     switch(level) {
@@ -35,32 +36,44 @@ class GameGenerationOptionsSelectorWidget extends StatefulWidget {
 
 class _GameGenerationOptionsSelectorWidgetState extends State<GameGenerationOptionsSelectorWidget> {
   late final TextEditingController controller;
-
-  int get level => widget.value.value.level;
+  bool miniSudoku = false;
+  int level = 0;
 
   @override
   void initState() {
     super.initState();
     controller = TextEditingController(text: widget.value.value.name);
+    level = widget.value.value.level;
   }
 
+  void updateGameGenerationOptions() {
+    widget.value.value = GameGenerationOptions(name: widget.value.value.name, level: level, gridSize: miniSudoku ? 6 : 9);
+
+  }
   @override
-  Widget build(BuildContext context) => SizedBox(width: 400, height: 300, child: Column(
+  Widget build(BuildContext context) => SizedBox(width: 400, height: 350, child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Game name"),
           SizedBox(width: 20),
           Flexible(child: TextField(controller: controller, onChanged: (s) {
-          widget.value.value = GameGenerationOptions(name: controller.text, level: level);
+            updateGameGenerationOptions();
         },))],),
+        CheckboxListTile(value: miniSudoku, onChanged: (v) {
+          setState(() {
+            miniSudoku = v ?? false;
+            updateGameGenerationOptions();
+          });
+        }, title: Text("Create Mini Sudoku"),),
         SizedBox(height: 20),
         Text("Game Difficulty"),
         ValueListenableBuilder(valueListenable: widget.value, builder: (context, _, _) => Flexible(child:
         RadioGroup(onChanged: (int? val) {
           if (val != null) {
             setState(() {
-              widget.value.value = GameGenerationOptions(name: widget.value.value.name, level: val);
+              level = val;
+              updateGameGenerationOptions();
             });
           }
         }, groupValue: level,

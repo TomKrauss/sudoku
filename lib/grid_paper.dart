@@ -5,35 +5,47 @@ class _GridPaperPainter extends CustomPainter {
     required this.color,
     required this.interval,
     required this.divisions,
-    required this.subdivisions,
+    required this.majorGridColumnBreaks,
+    required this.majorGridRowBreaks,
   });
 
   final Color color;
   final double interval;
   final int divisions;
-  final int subdivisions;
+  ///
+  /// The positions, where a major grid line is being painted in column direction.
+  ///
+  final List<int> majorGridColumnBreaks;
+
+  ///
+  /// The positions, where a major grid line is being painted in row direction.
+  ///
+  final List<int> majorGridRowBreaks;
+
 
   @override
   void paint(Canvas canvas, Size size) {
     final thick = 2.0;
     final Paint linePaint = Paint()..color = color;
     linePaint.strokeCap = StrokeCap.round;
-    final double allDivisions = (divisions * subdivisions).toDouble();
+    final allDivisions = divisions;
     for (int x = 0; x <= allDivisions; x ++) {
+      bool isBreak = majorGridColumnBreaks.contains(x);
       linePaint.strokeWidth =
-      (x % interval == 0)
+      (x % allDivisions == 0)
           ? thick
-          : (x % subdivisions == 0)
+          : isBreak
           ? 1.5
           : 0.5;
       var xPos = x*interval/allDivisions;
       canvas.drawLine(Offset(xPos, 0.0), Offset(xPos, size.height), linePaint);
     }
     for (int y = 0; y <= allDivisions; y++) {
+      bool isBreak = majorGridRowBreaks.contains(y);
       linePaint.strokeWidth =
-      (y % interval == 0)
+      (y % allDivisions == 0)
           ? thick
-          : (y % subdivisions == 0)
+          : isBreak
           ? 1.5
           : 0.5;
       var yPos = y * size.height / allDivisions;
@@ -45,7 +57,8 @@ class _GridPaperPainter extends CustomPainter {
   bool shouldRepaint(_GridPaperPainter oldPainter) => oldPainter.color != color ||
         oldPainter.interval != interval ||
         oldPainter.divisions != divisions ||
-        oldPainter.subdivisions != subdivisions;
+        oldPainter.majorGridColumnBreaks != majorGridColumnBreaks ||
+      oldPainter.majorGridRowBreaks != majorGridRowBreaks;
 
   @override
   bool hitTest(Offset position) => false;
@@ -60,8 +73,9 @@ class CustomGridPaper extends StatelessWidget {
     super.key,
     this.color = Colors.black,
     this.interval = 100.0,
-    this.divisions = 2,
-    this.subdivisions = 5,
+    this.divisions = 10,
+    this.majorGridColumnBreaks = const [5],
+    this.majorGridRowBreaks = const [5],
     this.child,
   });
 
@@ -75,9 +89,9 @@ class CustomGridPaper extends StatelessWidget {
   /// Each primary line is one logical pixel wide.
   final double interval;
 
-  /// The number of major divisions within each primary grid cell.
+  /// The number of divisions within each grid cell.
   ///
-  /// This is the number of major divisions per [interval], including the
+  /// This is the number of divisions per [interval], including the
   /// primary grid's line.
   ///
   /// The lines after the first are half a logical pixel wide.
@@ -88,13 +102,15 @@ class CustomGridPaper extends StatelessWidget {
   /// next [interval]).
   final int divisions;
 
-  /// The number of minor divisions within each major division, including the
-  /// major division itself.
   ///
-  /// If [subdivisions] is 5 (the default), it means that there will be four
-  /// lines between each major ([divisions]) line.
+  /// The positions, where a major grid line is being painted in column direction.
   ///
-  final int subdivisions;
+  final List<int> majorGridColumnBreaks;
+
+  ///
+  /// The positions, where a major grid line is being painted in row direction.
+  ///
+  final List<int> majorGridRowBreaks;
 
   /// The widget below this widget in the tree.
   ///
@@ -107,7 +123,8 @@ class CustomGridPaper extends StatelessWidget {
         color: color,
         interval: interval,
         divisions: divisions,
-        subdivisions: subdivisions,
+        majorGridColumnBreaks: majorGridColumnBreaks,
+        majorGridRowBreaks: majorGridRowBreaks,
       ),
       child: child,
     );
