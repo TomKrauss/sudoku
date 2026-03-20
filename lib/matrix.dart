@@ -375,12 +375,64 @@ class Matrix {
   }
 
   ///
-  /// Tries to find two identical alternative pairs for the given set of cells which together
+  /// Check whether 3 given cells have the same applicable triple of alternatives.
+  ///
+  List<int>? sharedTriples(Cell c1, Cell c2, Cell c3) {
+    var joined = <int>{};
+    joined.addAll(c1.alternatives);
+    joined.addAll(c2.alternatives);
+    joined.addAll(c3.alternatives);
+    if (joined.length != 3) {
+      return null;
+    }
+    return joined.toList();
+  }
+
+  ///
+  /// Implements the naked triples strategy.
+  ///
+  /// Tries to find three identical naked triples for the given set of cells which together
   /// must conform to the rule, that every cell must have a distinct value. If such two cells can
   /// be identified, the two alternative values selectable for the two cells can be removed from
   /// the alternatives of all other cells in the given set of cells.
   ///
-  void eliminateAlternativePairs(List<Cell> cells) {
+  void eliminateNakedTriples(List<Cell> cells) {
+    Cell? first;
+    Cell? second;
+    Cell? third;
+    var applicableCells = cells.where((c) => c.alternatives.length == 2 || c.alternatives.length == 3).toList();
+    if (applicableCells.length < 3) {
+      return;
+    }
+    for (int i = 0; i < applicableCells.length-2; i++) {
+      first = applicableCells[i];
+      for (int j = i+1; j < applicableCells.length; j++) {
+        second = applicableCells[j];
+        for (int k = j+1; k < applicableCells.length; k++) {
+          third = applicableCells[k];
+          var shared = sharedTriples(first, second, third);
+          if (shared != null) {
+            for (var i = 0; i < cells.length - 1; i++) {
+              final cell = cells[i];
+              if (cell != first && cell != second && cell != third) {
+                cell.alternatives.removeWhere((a) => shared.contains(a));
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  ///
+  /// Implements the naked pairs strategy.
+  ///
+  /// Tries to find two identical naked pairs for the given set of cells which together
+  /// must conform to the rule, that every cell must have a distinct value. If such two cells can
+  /// be identified, the two alternative values selectable for the two cells can be removed from
+  /// the alternatives of all other cells in the given set of cells.
+  ///
+  void eliminateNakedPairs(List<Cell> cells) {
     Cell? first;
     Cell? second;
     for (var i = 0; i < cells.length-1; i++) {
@@ -431,14 +483,17 @@ class Matrix {
     }
     for (var i = 0; i < rowCount; i++) {
       var row = rowAt(i);
-      eliminateAlternativePairs(row);
+      eliminateNakedPairs(row);
+      eliminateNakedTriples(row);
     }
     for (var j = 0; j < columnCount; j++) {
       var column = columnAt(j);
-      eliminateAlternativePairs(column);
+      eliminateNakedPairs(column);
+      eliminateNakedTriples(column);
     }
     blocksDo((cells) {
-      eliminateAlternativePairs(cells);
+      eliminateNakedPairs(cells);
+      eliminateNakedTriples(cells);
       return true;
     });
   }
