@@ -20,24 +20,25 @@ class CellWidget extends StatelessWidget {
   final bool showTips;
   final FocusNode focusNode;
   final double cellSize;
+  final RegExp inputFilter;
   const CellWidget(this.cell, this.onChanged,
-      {required this.showTips, required this.focusNode, required this.editable, required this.cellSize, super.key, required this.onToggleCellMark});
+      {required this.showTips, required this.focusNode, required this.editable,
+        required this.cellSize, super.key, required this.onToggleCellMark, required this.inputFilter});
   final Cell cell;
   final void Function(String? newVal)? onChanged;
   final void Function() onToggleCellMark;
   final bool editable;
 
   Widget? get editWidget => editable ? TextField(
-    style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+    style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: cellSize / 3),
     decoration: InputDecoration(border: InputBorder.none, counterText: ""),
     textAlign: TextAlign.center,
     focusNode: focusNode,
     selectAllOnFocus: true,
-    maxLength: 1,
     controller: TextEditingController(text: "${cell.value ?? ''}"),
     onChanged: onChanged,
     onSubmitted: (s) => onToggleCellMark(),
-    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+    inputFormatters: [FilteringTextInputFormatter.allow(inputFilter)],
     keyboardType: TextInputType.number,
   ) : null;
 

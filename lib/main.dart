@@ -123,16 +123,30 @@ class _SudokuBoardState extends State<SudokuBoard> {
     }
   }
 
+  ///
+  /// Create a new empty game, where the user can type in the numbers by herself.
+  ///
   Future<void> newGame() async {
-    var name = await showInputPrompt(context, promptText: "Enter the name of the new game",
-        title: "New Game", initialValue: "Game #${games.numberOfGames+1}");
-    if (name == null) {
+    var options = await selectNewGameOptions(context, generateGame: false);
+    if (options == null) {
       return;
     }
     setState(() {
-      if (!model.isEmpty) {
-        games.newGame(name: name);
-      }
+      games.newGame(name: options.name, size: options.gridSize);
+    });
+  }
+
+  ///
+  /// Create a new empty game and generate the game.
+  ///
+  Future<void> generateGame() async {
+    var options = await selectNewGameOptions(context, generateGame: true);
+    if (options == null) {
+      return;
+    }
+    setState(() {
+      games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces, name: options.name, size: options.gridSize);
+      model.gameMode = GameMode.playing;
     });
   }
 
@@ -220,17 +234,6 @@ class _SudokuBoardState extends State<SudokuBoard> {
       }
     }
     return Point(newX, newY);
-  }
-
-  Future<void> generateGame() async {
-    var options = await selectGameDifficulty(context);
-    if (options == null) {
-      return;
-    }
-    setState(() {
-      games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces, name: options.name, size: options.gridSize);
-      model.gameMode = GameMode.playing;
-    });
   }
 
   ///
@@ -332,14 +335,17 @@ class _SudokuBoardState extends State<SudokuBoard> {
                                       ? (s) {
                                     model.editCellValue(c, s);
                                     onCurrentGameChanged();
-                                    WidgetsBinding.instance
-                                        .addPostFrameCallback((_) {
-                                      moveCellFocusBy(
-                                          s?.isEmpty == true ? 0 : 1);
-                                    });
+                                    if (model.gridCount < 10) {
+                                      WidgetsBinding.instance
+                                          .addPostFrameCallback((_) {
+                                        moveCellFocusBy(
+                                            s?.isEmpty == true ? 0 : 1);
+                                      });
+                                    }
                                   }
                                       : null,
                                   cellSize: cellSize,
+                                  inputFilter: model.inputFilter,
                                   focusNode: forCell(model.placementOf(c)),
                                   showTips: _showTips || model.gameMode == GameMode.solved,
                                   editable: editing &&

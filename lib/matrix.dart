@@ -901,6 +901,13 @@ class Matrix {
   bool get bailedOut => _stepsToSolveGame > 100;
 
   ///
+  /// The input filter restricting the input which can be types by the user
+  /// into the text field of the cells.
+  ///
+  RegExp get inputFilter => gridCount < 10 ? RegExp('[1-$gridCount]') : gridCount < 20 ? RegExp('(1[0-${gridCount-10}])|([1-9])') :
+    RegExp('([12][0-$gridCount])|([1-$gridCount])');
+
+  ///
   /// Solve a Sudoku game using back-tracking. Pretty trivial algorithm with few optimizations.
   ///
   Matrix? _solve([int level = 0]) {

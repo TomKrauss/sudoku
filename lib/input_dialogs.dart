@@ -1,6 +1,3 @@
-
-
-
 // The MIT License (MIT)
 //
 // Copyright © 2026 <copyright holders>
@@ -16,18 +13,43 @@ import 'package:sudoku/model.dart';
 
 const _defaultDialogTitle = "Sudoku";
 
-class GameGenerationOptions {
+///
+/// Options for creating a new game.
+///
+class NewGameOptions {
+  ///
+  /// The name to use for the new game.
+  ///
   final String name;
-  final int level;
-  final int gridSize;
-  GameGenerationOptions({this.name = "New Game", this.level = 1, this.gridSize = 9});
 
+  ///
+  /// For generated games, the difficulty level of the game
+  /// to generate.
+  ///
+  final int level;
+
+  ///
+  /// The number of cells the game should have.
+  ///
+  final int gridSize;
+  NewGameOptions({this.name = "New Game", this.level = 1, this.gridSize = 9});
+
+  ///
+  /// If the game should be generated, this defines the difficulty level of
+  /// the game to generate - the number of places to be left open.
+  ///
   int get numberOfEmptyPlaces {
-    switch(level) {
-      case 1: return 42;
-      case 2: return 49;
-      case 3: return 53;
-      default: return 57;
+    switch (level) {
+      case 1:
+        return 42;
+      case 2:
+        return 49;
+      case 3:
+        return 53;
+      case 4:
+        return 57;
+      default:
+        return 59;
     }
   }
 }
@@ -36,17 +58,24 @@ class GameGenerationOptions {
 /// A widget allowing to define a name and select a difficulty for
 /// a game to generate.
 ///
-class GameGenerationOptionsSelectorWidget extends StatefulWidget {
-  final ValueNotifier<GameGenerationOptions> value;
-  const GameGenerationOptionsSelectorWidget({required this.value, super.key});
+class NewGameOptionsSelectorWidget extends StatefulWidget {
+  final ValueNotifier<NewGameOptions> value;
+  final bool generateGame;
+  const NewGameOptionsSelectorWidget({
+    required this.value,
+    this.generateGame = false,
+    super.key,
+  });
 
   @override
-  State<GameGenerationOptionsSelectorWidget> createState() => _GameGenerationOptionsSelectorWidgetState();
+  State<NewGameOptionsSelectorWidget> createState() =>
+      _NewGameOptionsSelectorWidgetState();
 }
 
-class _GameGenerationOptionsSelectorWidgetState extends State<GameGenerationOptionsSelectorWidget> {
+class _NewGameOptionsSelectorWidgetState
+    extends State<NewGameOptionsSelectorWidget> {
   late final TextEditingController controller;
-  bool miniSudoku = false;
+  int gridSize = 9;
   int level = 0;
 
   @override
@@ -57,42 +86,86 @@ class _GameGenerationOptionsSelectorWidgetState extends State<GameGenerationOpti
   }
 
   void updateGameGenerationOptions() {
-    widget.value.value = GameGenerationOptions(name: widget.value.value.name, level: level, gridSize: miniSudoku ? 6 : 9);
-
+    widget.value.value = NewGameOptions(
+      name: widget.value.value.name,
+      level: level,
+      gridSize: gridSize,
+    );
   }
+
   @override
-  Widget build(BuildContext context) => SizedBox(width: 400, height: 350, child: Column(
+  Widget build(BuildContext context) => IntrinsicHeight(child: SizedBox(
+    width: 400,
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Game name"),
-          SizedBox(width: 20),
-          Flexible(child: TextField(controller: controller, onChanged: (s) {
-            updateGameGenerationOptions();
-        },))],),
-        CheckboxListTile(value: miniSudoku, onChanged: (v) {
-          setState(() {
-            miniSudoku = v ?? false;
-            updateGameGenerationOptions();
-          });
-        }, title: Text("Create Mini Sudoku"),),
-        SizedBox(height: 20),
-        Text("Game Difficulty"),
-        ValueListenableBuilder(valueListenable: widget.value, builder: (context, _, _) => Flexible(child:
-        RadioGroup(onChanged: (int? val) {
-          if (val != null) {
-            setState(() {
-              level = val;
-              updateGameGenerationOptions();
-            });
-          }
-        }, groupValue: level,
-            child: Column(children: [
-          RadioListTile(value: 1, title: Text("Beginner Level")),
-          RadioListTile(value: 2, title: Text("Intermediate Level")),
-          RadioListTile(value: 3, title: Text("Expert Level")),
-          RadioListTile(value: 4, title: Text("Killer Level"))
-        ]))))]));
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Game name"),
+            SizedBox(width: 20),
+            Flexible(
+              child: TextField(
+                controller: controller,
+                onChanged: (s) {
+                  updateGameGenerationOptions();
+                },
+              ),
+            ),
+          ],
+        ),
+        Text("Game Size"),
+        Flexible(
+          child: RadioGroup(
+            onChanged: (int? val) {
+              if (val != null) {
+                setState(() {
+                  gridSize = val;
+                  updateGameGenerationOptions();
+                });
+              }
+            },
+            groupValue: gridSize,
+            child: Column(
+              children: [
+                RadioListTile(value: 9, title: Text("Standard 9x9")),
+                RadioListTile(value: 6, title: Text("Mini Sudoku 6x6")),
+                RadioListTile(value: 25, title: Text("Giant Sudoku 25x25")),
+                RadioListTile(value: 12, title: Text("Maxi Sudoku 12x12")),
+              ],
+            ),
+          ),
+        ),
+
+        if (widget.generateGame) ...[
+          SizedBox(height: 20),
+          Text("Game Difficulty"),
+          Flexible(
+            child: RadioGroup(
+              onChanged: (int? val) {
+                if (val != null) {
+                  setState(() {
+                    level = val;
+                    updateGameGenerationOptions();
+                  });
+                }
+              },
+              groupValue: level,
+              child: Column(
+                children: [
+                  RadioListTile(value: 1, title: Text("Beginner Level")),
+                  RadioListTile(value: 2, title: Text("Intermediate Level")),
+                  RadioListTile(value: 3, title: Text("Expert Level")),
+                  RadioListTile(value: 4, title: Text("Killer Level")),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    ),
+  ));
 }
 
 ///
@@ -112,83 +185,147 @@ class _GameSelectorWidgetState extends State<GameSelectorWidget> {
   String? get selection => widget.value.value;
 
   @override
-  Widget build(BuildContext context) => SizedBox(width: 400, height: 300, child: Column(
+  Widget build(BuildContext context) => SizedBox(
+    width: 400,
+    height: 300,
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-      Text("Select Game to load"),
-      Flexible(child: ListView(children: games.games.map((g) =>
-        ListTile(title: Text(g.name??""), selected: g.name == selection,
-            selectedTileColor: Theme.of(context).colorScheme.primary,
-            selectedColor: Theme.of(context).colorScheme.onPrimary,
-            onTap: () =>
-        setState(() {
-          widget.value.value = g.name;
-        })
-        )).toList(),))]));
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text("Select Game to load"),
+        Flexible(
+          child: ListView(
+            children: games.games
+                .map(
+                  (g) => ListTile(
+                    title: Text(g.name ?? ""),
+                    selected: g.name == selection,
+                    selectedTileColor: Theme.of(context).colorScheme.primary,
+                    selectedColor: Theme.of(context).colorScheme.onPrimary,
+                    onTap: () => setState(() {
+                      widget.value.value = g.name;
+                    }),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 ///
 /// General utility to show a dialog.
 ///
-Future<String?> showContentDialog(BuildContext context, {required String title, required Widget content, String Function()?getValue, List<Widget>? actions}) async {
+Future<String?> showContentDialog(
+  BuildContext context, {
+  required String title,
+  required Widget content,
+  String Function()? getValue,
+  List<Widget>? actions,
+}) async {
   actions ??= <Widget>[
     TextButton(
       onPressed: () => Navigator.pop(context, null),
       child: const Text('Cancel'),
     ),
-    TextButton(onPressed: () => Navigator.pop(context, getValue == null ? null : getValue()), child: const Text('OK')),
+    TextButton(
+      onPressed: () =>
+          Navigator.pop(context, getValue == null ? null : getValue()),
+      child: const Text('OK'),
+    ),
   ];
-  return await showDialog(context: context, builder: (BuildContext context) => AlertDialog(
-    title: Text(title),
-    content: content,
-    actions: actions,
-  ),);
+  return await showDialog(
+    context: context,
+    builder: (BuildContext context) =>
+        AlertDialog(title: Text(title), content: content, actions: actions),
+  );
 }
 
 ///
 /// Show a dialog box allowing to enter a text to be returned and accept using OK or cancel
 /// out in which case null is returned.
 ///
-Future<String?> showInputPrompt(BuildContext context, {String title = _defaultDialogTitle, required String promptText, String? initialValue}) async {
+Future<String?> showInputPrompt(
+  BuildContext context, {
+  String title = _defaultDialogTitle,
+  required String promptText,
+  String? initialValue,
+}) async {
   final controller = TextEditingController(text: initialValue);
-  return showContentDialog(context, title: title, content: Column(mainAxisSize: MainAxisSize.min,
+  return showContentDialog(
+    context,
+    title: title,
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [Text(promptText), Flexible(child: TextField(controller: controller))]), getValue: () => controller.text);
+      children: [
+        Text(promptText),
+        Flexible(child: TextField(controller: controller)),
+      ],
+    ),
+    getValue: () => controller.text,
+  );
 }
-
 
 ///
 /// Show a dialog box allowing to display a question, which can be answered using yes/no/cancel ...
 ///
-Future<String?> showAlertDialog(BuildContext context, {String title = _defaultDialogTitle, required String message, required List<String> buttons}) async => showContentDialog(context, title: title, content: Column(mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [Text(message)]),
-    actions: buttons.map((text) =>
-      TextButton(
-        onPressed: () => Navigator.pop(context, text),
-        child: Text(text),
+Future<String?> showAlertDialog(
+  BuildContext context, {
+  String title = _defaultDialogTitle,
+  required String message,
+  required List<String> buttons,
+}) async => showContentDialog(
+  context,
+  title: title,
+  content: Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [Text(message)],
+  ),
+  actions: buttons
+      .map(
+        (text) => TextButton(
+          onPressed: () => Navigator.pop(context, text),
+          child: Text(text),
+        ),
       )
-    ).toList()
-  );
-
+      .toList(),
+);
 
 ///
 /// Show a dialog allowing to select a game.
 ///
-Future<String?> selectGame(BuildContext context, {String title = _defaultDialogTitle}) async {
+Future<String?> selectGame(
+  BuildContext context, {
+  String title = _defaultDialogTitle,
+}) async {
   final selection = ValueNotifier(Games().current.name ?? "game");
   final w = GameSelectorWidget(value: selection);
-  return showContentDialog(title: title, context, content: w,
-      getValue: () => selection.value);
+  return showContentDialog(
+    title: title,
+    context,
+    content: w,
+    getValue: () => selection.value,
+  );
 }
 
-
-Future<GameGenerationOptions?> selectGameDifficulty(BuildContext context, {String title = _defaultDialogTitle}) async {
-  final selection = ValueNotifier(GameGenerationOptions());
-  final w = GameGenerationOptionsSelectorWidget(value: selection);
-  if (await showContentDialog(title: title, context, content: w,
-      getValue: () => "OK") == "OK") {
+Future<NewGameOptions?> selectNewGameOptions(
+  BuildContext context, {
+  String title = _defaultDialogTitle,
+  required bool generateGame
+}) async {
+  final selection = ValueNotifier(NewGameOptions());
+  final w = NewGameOptionsSelectorWidget(value: selection, generateGame: generateGame,);
+  if (await showContentDialog(
+        title: title,
+        context,
+        content: w,
+        getValue: () => "OK",
+      ) ==
+      "OK") {
     return selection.value;
   }
   return null;

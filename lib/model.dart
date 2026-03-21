@@ -123,6 +123,12 @@ class Game {
 
   int get difficultyLevel => matrix.difficultyLevel;
 
+  ///
+  /// The input filter restricting the input which can be types by the user
+  /// into the text field of the cells.
+  ///
+  RegExp get inputFilter => matrix.inputFilter;
+
   bool isCellEditable(int x, int y) =>
       current?.isCellEditable(x, y, gameMode == GameMode.creating) ?? false;
 
