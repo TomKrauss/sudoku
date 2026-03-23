@@ -12,11 +12,39 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sudoku/matrix.dart';
 
+///
+/// An input formatter controlling the value which can be typed into a Sudoku cell.
+/// Only numeric input is supported so far.
+///
+class SudokuInputFormatter extends TextInputFormatter {
+  ///
+  /// The maximum number allowed by the grid (typically 9).
+  ///
+  final int maxNumber;
+  SudokuInputFormatter({required this.maxNumber});
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+    if (newValue.text.startsWith("0")) {
+      return oldValue;
+    }
+    var n = int.tryParse(newValue.text);
+    if (n == null || n < 1 || n > maxNumber) {
+      return oldValue;
+    }
+    return newValue;
+  }
+
+}
 ///
 /// Utility to get the duplicate elements in a list.
 ///
@@ -127,7 +155,7 @@ class Game {
   /// The input filter restricting the input which can be types by the user
   /// into the text field of the cells.
   ///
-  RegExp get inputFilter => matrix.inputFilter;
+  TextInputFormatter get inputFilter => SudokuInputFormatter(maxNumber: gridCount);
 
   bool isCellEditable(int x, int y) =>
       current?.isCellEditable(x, y, gameMode == GameMode.creating) ?? false;

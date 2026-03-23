@@ -20,7 +20,7 @@ class CellWidget extends StatelessWidget {
   final bool showTips;
   final FocusNode focusNode;
   final double cellSize;
-  final RegExp inputFilter;
+  final TextInputFormatter inputFilter;
   const CellWidget(this.cell, this.onChanged,
       {required this.showTips, required this.focusNode, required this.editable,
         required this.cellSize, super.key, required this.onToggleCellMark, required this.inputFilter});
@@ -38,7 +38,7 @@ class CellWidget extends StatelessWidget {
     controller: TextEditingController(text: "${cell.value ?? ''}"),
     onChanged: onChanged,
     onSubmitted: (s) => onToggleCellMark(),
-    inputFormatters: [FilteringTextInputFormatter.allow(inputFilter)],
+    inputFormatters: [inputFilter],
     keyboardType: TextInputType.number,
   ) : null;
 
