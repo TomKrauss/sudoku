@@ -75,7 +75,7 @@ class Matrix {
   final List<int> blockRowBreaks = [3,6];
 
   ///
-  /// Used to calculate the difficulty of a game.
+  /// Used to bail out calculating difficult games using back-tracking.
   ///
   static int _stepsToSolveGame = 0;
   bool dirty = false;
@@ -476,6 +476,19 @@ class Matrix {
   }
 
   ///
+  /// Detect hidden singles in a house of cells and eliminate the "non-singles" from
+  /// the list of alternatives.
+  ///
+  void findHiddenSingles(List<Cell> cells) {
+    for (var i = 1; i < gridCount; i++) {
+      var matching = cells.where((c) => c.value == null && c.alternatives.contains(i));
+      if (matching.length == 1) {
+        matching.first.alternatives.removeWhere((v) => v != i);
+      }
+    }
+  }
+
+  ///
   /// Calculate the possible alternatives to be used for a cell.
   /// Return [true] if the matrix is solvable and [false] otherwise.
   ///
@@ -493,15 +506,18 @@ class Matrix {
     }
     for (var i = 0; i < rowCount; i++) {
       var row = rowAt(i);
+      findHiddenSingles(row);
       eliminateNakedPairs(row);
       eliminateNakedTriples(row);
     }
     for (var j = 0; j < columnCount; j++) {
       var column = columnAt(j);
+      findHiddenSingles(column);
       eliminateNakedPairs(column);
       eliminateNakedTriples(column);
     }
     blocksDo((cells) {
+      findHiddenSingles(cells);
       eliminateNakedPairs(cells);
       eliminateNakedTriples(cells);
       return true;
@@ -869,12 +885,27 @@ class Matrix {
   ///
   bool get isEmpty => !cells.any((r) => r.any((c) => c.value != null));
 
+  ///
+  /// Return a number identifying the difficulty to solve this matrix. This is currently
+  /// calculated based on the number of empty cells compared to the grid count and on the
+  /// number of possible alternatives still possible for each cell also in comparison to the grid
+  /// count.
+  ///
   int get difficultyLevel {
     var m = Matrix.clone(this);
     m.clearGuesses();
-    m.solve();
-    return _stepsToSolveGame;
+    m.recalculateAlternatives();
+    var nEmpty = m.emptyCells.length;
+    var nAlternatives = m.allCells.fold(0, (a,c) => a+c.alternatives.length);
+    return nEmpty * 3 ~/ gridCount + (nAlternatives / 2 ~/gridCount);
   }
+
+  Iterable<Cell> get allCells => cells.expand((l) => l);
+
+  ///
+  /// Returns all "empty cells", where no value has been placed yet.
+  ///
+  Iterable<Cell> get emptyCells => allCells.where((c) => c.value == null && c.given);
 
   ///
   /// Returns the number of values (occupied places) in the matrix.

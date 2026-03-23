@@ -67,13 +67,13 @@ void main() {
       m = Matrix.parse(
           "x x x x x 4 x x 6 "
           "x x x 2 x 1 x 9 x "
-          "x x 1 x 7 x 8 x x "
+          "x x x x x x x x x "
           "x 6 x x x x x 2 x "
-          "3 5 x x x x x x 8 "
-          "x x x x x x 3 7 x "
-          "x x 9 x 8 x 5 x x "
-          "x 4 x 3 x 2 x x x "
-          "7 x x 1 x x x x x ");
+          "x 5 x x x x x 9 8 "
+          "x x x x x x x 7 x "
+          "x x x x x x x x x "
+          "x x x x x 2 x x x "
+          "x x x 1 x x x x x ");
       solved = m.solve();
       expect(solved, isNull);
     });
@@ -108,22 +108,34 @@ void main() {
       expect(m.valueAt(1, 4), 7);
       expect(m.valueAt(7, 0), 9);
       expect(m.valueAt(8, 8), 4);
-      expect(m.difficultyLevel > 2, true);
+      expect(m.difficultyLevel, 10);
+      var m21 = Matrix.parse(
+          "_ _ _ 8 3 _ _ _ _ "
+          "_ _ _ _ _ 4 _ _ _ "
+          "_ _ _ _ _ _ _ _ _ "
+          "_ _ 4 _ _ 6 _ _ 8 "
+          "2 _ _ _ _ _ _ _ 9 "
+          "_ 6 _ _ _ 2 _ _ _ "
+          "_ _ _ 7 _ _ 9 _ 3 "
+          "9 _ _ _ _ _ _ _ 5 "
+          "_ _ 1 _ _ _ _ _ 4 "
+      );
+      expect(m21.difficultyLevel > m.difficultyLevel, true);
       var m2 = m.solve();
       expect(m2, isNotNull);
       expect(m2!.valueAt(0, 0), 5);
       expect(m2.valueAt(0, 1), 4);
       expect(m2.checkValid, true);
       m = Matrix.parse(
-              "_ 4 2 _ 5 7 _ 8 _ "
-              "_ _ _ _ _ _ _ _ 3 "
-              "_ _ _ 8 _ 2 _ _ _ "
-              "8 _ _ _ 6 _ _ _ 2 "
-              "_ 6 _ _ 1 3 _ _ _ "
-              "_ _ 7 _ _ _ 5 _ _ "
-              "_ 3 _ _ _ 4 _ 2 _ "
-              "_ 7 _ _ 2 5 _ _ 1 "
-              "_ _ 5 _ _ _ 4 _ _ "
+          "_ 4 2 _ 5 7 _ 8 _ "
+          "_ _ _ _ _ _ _ _ 3 "
+          "_ _ _ 8 _ 2 _ _ _ "
+          "8 _ _ _ 6 _ _ _ 2 "
+          "_ 6 _ _ 1 3 _ _ _ "
+          "_ _ 7 _ _ _ 5 _ _ "
+          "_ 3 _ _ _ 4 _ 2 _ "
+          "_ 7 _ _ 2 5 _ _ 1 "
+          "_ _ 5 _ _ _ 4 _ _ "
       );
       expect(m.checkValid, true);
       m2 = m.solve();
