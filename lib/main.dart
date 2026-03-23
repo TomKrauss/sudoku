@@ -8,11 +8,13 @@
 //
 // THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:markdown_widget/markdown_widget.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:sudoku/cell_widget.dart';
 import 'package:sudoku/grid_paper.dart';
 import 'package:sudoku/input_dialogs.dart';
@@ -53,6 +55,7 @@ class SudokuBoard extends StatefulWidget {
 
 class _SudokuBoardState extends State<SudokuBoard> {
   final Map<Point<int>, FocusNode> focusNodes = {};
+  final StreamController<bool> _busyController = BehaviorSubject.seeded(false);
   bool _showTips = false;
   final games = Games();
   Game get model => games.current;
@@ -83,6 +86,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
       n.dispose();
     }
     focusNodes.clear();
+    _busyController.close();
   }
 
   ///
@@ -136,6 +140,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
     });
   }
 
+  set busy(bool flag) => _busyController.add(flag);
+
   ///
   /// Create a new empty game and generate the game.
   ///
@@ -144,10 +150,10 @@ class _SudokuBoardState extends State<SudokuBoard> {
     if (options == null) {
       return;
     }
-    setState(() {
-      games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces, name: options.name, size: options.gridSize);
-      model.gameMode = GameMode.playing;
-    });
+    busy = true;
+    games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces, name: options.name, size: options.gridSize);
+    model.gameMode = GameMode.playing;
+    busy = false;
   }
 
   ///
@@ -178,20 +184,23 @@ class _SudokuBoardState extends State<SudokuBoard> {
     });
   }
 
-  void showSolution() {
-    setState(() {
-      if (model.gameMode == GameMode.solved) {
-        model.gameMode = GameMode.playing;
-      } else {
-        model.gameMode = GameMode.solved;
-        if (model.current == null) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("No resolution found.")));
-        }
+  ///
+  /// Calculate the solution and show the result.
+  ///
+  Future<void> showSolution() async {
+    busy = true;
+    if (model.gameMode == GameMode.solved) {
+      model.gameMode = GameMode.playing;
+    } else {
+      model.gameMode = GameMode.solved;
+      if (model.current == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("No resolution found.")));
       }
-      onCurrentGameChanged();
-    });
+    }
+    onCurrentGameChanged();
+    busy = false;
   }
 
   ///
@@ -293,6 +302,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
     var height = (MediaQuery.heightOf(context) - 300);
     var cellSize = (height > width ? width : height) / model.gridCount;
     var matrix = model.current;
+    var filter = model.inputFilter;
     return SingleChildScrollView(child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -312,7 +322,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
                   moveCellFocusBy(-1);
                 },
               },
-              child: CustomGridPaper(
+              child: StreamBuilder(stream: _busyController.stream, builder: (context, snapshot) => snapshot.data != false ?
+                  CircularProgressIndicator() : CustomGridPaper(
                 divisions: model.gridCount,
                 majorGridColumnBreaks: matrix?.blockColumnBreaks ?? [3,6],
                 majorGridRowBreaks: matrix?.blockRowBreaks ?? [3,6],
@@ -345,7 +356,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
                                   }
                                       : null,
                                   cellSize: cellSize,
-                                  inputFilter: model.inputFilter,
+                                  inputFilter: filter,
                                   focusNode: forCell(model.placementOf(c)),
                                   showTips: _showTips || model.gameMode == GameMode.solved,
                                   editable: editing &&
@@ -363,7 +374,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
                       .toList(),
                 ),
               ),
-            )),
+            ))),
         SizedBox(height: 20),
         Padding(padding: EdgeInsetsGeometry.all(15),
             child: Text("${playing ? 'Playing' : editing

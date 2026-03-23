@@ -29,8 +29,10 @@ class CellWidget extends StatelessWidget {
   final void Function() onToggleCellMark;
   final bool editable;
 
+  double get fontSize => cellSize / 3;
+
   Widget? get editWidget => editable ? TextField(
-    style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: cellSize / 3),
+    style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: fontSize),
     decoration: InputDecoration(border: InputBorder.none, counterText: ""),
     textAlign: TextAlign.center,
     focusNode: focusNode,
@@ -59,20 +61,30 @@ class CellWidget extends StatelessWidget {
   }
 
   TextStyle get textStyle => TextStyle(
-    fontSize: 18,
+    fontSize: fontSize,
     fontWeight: FontWeight.bold,
     color: textColor,
   );
 
   Widget get falseGuessWidget => Row(mainAxisAlignment: MainAxisAlignment.center,
     children: [Text("${cell.falseGuess}", style: TextStyle(decoration: TextDecoration.lineThrough), ),
-    Icon(Icons.arrow_right_alt, size: 12,),
+    Icon(Icons.arrow_right_alt, size: fontSize*2/3,),
     Text("${cell.value}", style: textStyle,)],);
+
+  List<String> get alternatives {
+    var l = cell.alternatives;
+    if (l.length > 7) {
+      var result = l.sublist(0, 6).map((i) => " $i ").toList();
+      result.add("...");
+      return result;
+    }
+    return l.map((i) => " $i ").toList();
+  }
 
   Widget get contentWidget => cell.value == null && showTips
       ? (Wrap(
-    children: cell.alternatives
-        .map((i) => Text(" $i ", style: TextStyle(fontSize: 10)))
+    children: alternatives
+        .map((text) => Text(text, style: TextStyle(fontSize: fontSize/2)))
         .toList(),
   ))
       : cell.falseGuess != null ? falseGuessWidget : Text(

@@ -81,19 +81,29 @@ class Matrix {
   bool dirty = false;
 
   ///
+  /// Fast lookup of cell placements.
+  ///
+  final Map<Cell, Point<int>> _placements = {};
+
+  ///
   /// Returns the placement of a cell in our matrix in form of
   /// a point with y being the row and x being the column.
   ///
   Point<int> placementOf(Cell cell) {
-    for (var i = 0; i < cells.length; i++) {
-      var row = cells[i];
-      for (var j = 0; j < row.length; j++) {
-        if (cell == row[j]) {
-          return Point(j, i);
+    var result = _placements[cell];
+    if (result == null) {
+      for (var i = 0; i < cells.length; i++) {
+        var row = cells[i];
+        for (var j = 0; j < row.length; j++) {
+          var p = Point(j, i);
+          _placements[row[j]] = p;
+          if (cell == row[j]) {
+            result = p;
+          }
         }
       }
     }
-    return Point(-1,-1);
+    return result ?? Point(-1,-1);
   }
 
   int get rowCount => cells.length;
