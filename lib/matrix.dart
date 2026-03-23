@@ -10,6 +10,7 @@
 // THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:sudoku/model.dart';
 
@@ -61,6 +62,22 @@ class Matrix {
   static const int defaultSize = 9;
   String? name;
   List<List<Cell>> cells = [];
+
+  final List<VoidCallback> _notifiers = [];
+
+  void onGameChanged(VoidCallback callback) {
+    _notifiers.add(callback);
+  }
+
+  ///
+  /// Invoked, when the definition of this game has changed.
+  ///
+  void _gameChanged() {
+    for (final c in _notifiers) {
+      c();
+    }
+  }
+
 
   ///
   /// The indices at which a block ends in column direction. Depends on
@@ -274,7 +291,7 @@ class Matrix {
     var existing = cellRow.toSet();
     existing.addAll(cellCol);
     existing.addAll(cellBlock);
-    if (existing.length == 9) {
+    if (existing.length == gridCount) {
       return null;
     }
     var avail = List.generate(gridCount, (index) => index+1);
@@ -995,8 +1012,9 @@ class Matrix {
     }
     c.value = newValue;
     c.solved = false;
-    c.given = creatingGame;
+    c.given = creatingGame && newValue != null;
     dirty = true;
+    _gameChanged();
   }
 
   ///

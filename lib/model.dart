@@ -71,7 +71,6 @@ enum GameMode {
 class Game {
   final Matrix matrix;
   GameMode _mode = GameMode.playing;
-  bool _trySolve = true;
   Matrix? _playingMatrix;
   Matrix? _solvedMatrix;
 
@@ -87,7 +86,7 @@ class Game {
     if (_mode != mode) {
       _mode = mode;
       if (mode == GameMode.solved) {
-        _trySolve = true;
+        calculateSolvedMatrix();
       }
       onChanged();
     }
@@ -121,16 +120,25 @@ class Game {
     return _playingMatrix!;
   }
 
-  Matrix? get solvedMatrix {
-    if (_solvedMatrix == null && _trySolve) {
+  ///
+  /// Calculate the solved matrix, if that had not been yet calculated
+  /// or if it must be recalculated.
+  ///
+  void calculateSolvedMatrix() {
+    if (_solvedMatrix == null) {
       _solvedMatrix = Matrix.clone(matrix);
       _solvedMatrix = _solvedMatrix?.solve();
-      _trySolve = false;
     }
-    return _solvedMatrix;
   }
 
-  Game(this.matrix);
+  Matrix? get solvedMatrix => _solvedMatrix;
+
+  Game(this.matrix) {
+    matrix.onGameChanged(() {
+      // need to recalculate the solved matrix.
+      _solvedMatrix = null;
+    });
+  }
 
   @override
   int get hashCode => matrix.hashCode;

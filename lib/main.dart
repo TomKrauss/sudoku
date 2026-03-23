@@ -142,8 +142,14 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   set busy(bool flag) => _busyController.add(flag);
 
+  Future<void> _generateGame(NewGameOptions options) async {
+    games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces, name: options.name, size: options.gridSize);
+    model.gameMode = GameMode.playing;
+    busy = false;
+  }
+
   ///
-  /// Create a new empty game and generate the game.
+  /// Create a new empty game and generate the game with options to select before .
   ///
   Future<void> generateGame() async {
     var options = await selectNewGameOptions(context, generateGame: true);
@@ -151,9 +157,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
       return;
     }
     busy = true;
-    games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces, name: options.name, size: options.gridSize);
-    model.gameMode = GameMode.playing;
-    busy = false;
+    unawaited(_generateGame(options));
   }
 
   ///
