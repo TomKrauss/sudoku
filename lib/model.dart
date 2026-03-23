@@ -71,6 +71,7 @@ enum GameMode {
 class Game {
   final Matrix matrix;
   GameMode _mode = GameMode.playing;
+  bool _trySolve = true;
   Matrix? _playingMatrix;
   Matrix? _solvedMatrix;
 
@@ -85,6 +86,9 @@ class Game {
   set gameMode(GameMode mode) {
     if (_mode != mode) {
       _mode = mode;
+      if (mode == GameMode.solved) {
+        _trySolve = true;
+      }
       onChanged();
     }
   }
@@ -118,9 +122,10 @@ class Game {
   }
 
   Matrix? get solvedMatrix {
-    if (_solvedMatrix == null) {
+    if (_solvedMatrix == null && _trySolve) {
       _solvedMatrix = Matrix.clone(matrix);
       _solvedMatrix = _solvedMatrix?.solve();
+      _trySolve = false;
     }
     return _solvedMatrix;
   }

@@ -193,7 +193,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
       model.gameMode = GameMode.playing;
     } else {
       model.gameMode = GameMode.solved;
-      if (model.current == null) {
+      if (model.current == null && mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("No resolution found.")));
@@ -201,6 +201,9 @@ class _SudokuBoardState extends State<SudokuBoard> {
     }
     onCurrentGameChanged();
     busy = false;
+    setState(() {
+
+    });
   }
 
   ///
