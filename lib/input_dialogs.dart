@@ -87,7 +87,7 @@ class _NewGameOptionsSelectorWidgetState
 
   void updateGameGenerationOptions() {
     widget.value.value = NewGameOptions(
-      name: widget.value.value.name,
+      name: controller.text,
       level: level,
       gridSize: gridSize,
     );
