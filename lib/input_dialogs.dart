@@ -182,8 +182,19 @@ class GameSelectorWidget extends StatefulWidget {
 
 class _GameSelectorWidgetState extends State<GameSelectorWidget> {
   final games = Games();
+  GlobalKey selectionKey = GlobalKey(debugLabel: "selection");
   String? get selection => widget.value.value;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((x) {
+      var ctx = selectionKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(ctx);
+      }
+    });
+  }
   @override
   Widget build(BuildContext context) => SizedBox(
     width: 400,
@@ -198,6 +209,7 @@ class _GameSelectorWidgetState extends State<GameSelectorWidget> {
             children: games.games
                 .map(
                   (g) => ListTile(
+                    key: g.name == selection ? selectionKey : null,
                     title: Text(g.name ?? ""),
                     selected: g.name == selection,
                     selectedTileColor: Theme.of(context).colorScheme.primary,

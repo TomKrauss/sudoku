@@ -309,6 +309,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
     var height = (MediaQuery.heightOf(context) - 300);
     var cellSize = (height > width ? width : height) / model.gridCount;
     var matrix = model.current;
+    matrix?.onCellErrorStateChanged = (c) {
+      setState(() {
+
+      });
+    };
     var filter = model.inputFilter;
     return SingleChildScrollView(child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

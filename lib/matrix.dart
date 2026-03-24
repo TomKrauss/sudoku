@@ -19,6 +19,11 @@ import 'package:sudoku/model.dart';
 ///
 class Cell {
   ///
+  /// Callback, which can be attached to listen to changes in the error state of this cell.
+  ///
+  VoidCallback? onErrorStateChanged;
+
+  ///
   /// Whether this cells value was pre-defined for the original game.
   ///
   bool given = false;
@@ -37,10 +42,25 @@ class Cell {
   ///
   int? falseGuess;
 
+  bool _hasError = false;
+
   ///
   /// Whether this cell contains a value causing a duplicate.
   ///
-  bool hasError = false;
+  bool get hasError => _hasError;
+
+  ///
+  /// Mark the cell as (non) erroneous.
+  ///
+  set hasError(bool newFlag) {
+    if (_hasError != newFlag) {
+      _hasError = newFlag;
+      if (onErrorStateChanged != null) {
+        onErrorStateChanged!();
+      }
+    }
+  }
+
   ///
   /// Can be used, when solving the Sudoku manually to mark a cell as being solved - one
   /// is sure, the value is correct.
@@ -704,8 +724,9 @@ class Matrix {
       var v = colValues(c);
       var duplicates = v.toList().getDuplicates();
       if (duplicates.isNotEmpty) {
+        var colCells = columnAt(c);
         valid = false;
-        for (final cell in cells.map((cells) => cells[c])) {
+        for (final cell in colCells) {
           if (duplicates.contains(cell.value)) {
             cell.hasError = true;
           }
@@ -966,6 +987,13 @@ class Matrix {
     RegExp('([12][0-$gridCount])|([1-$gridCount])');
 
   ///
+  /// Attach a listener to all matrix cells and listen to a change of the error state of the cell.
+  ///
+  set onCellErrorStateChanged(void Function(Cell cell) onCellErrorStateChanged) {
+    cellsDo((c, _, _) { c.onErrorStateChanged = () => onCellErrorStateChanged(c); return true; });
+  }
+
+  ///
   /// Solve a Sudoku game using back-tracking. Pretty trivial algorithm with few optimizations.
   ///
   Matrix? _solve([int level = 0]) {
@@ -1014,6 +1042,9 @@ class Matrix {
     c.solved = false;
     c.given = creatingGame && newValue != null;
     dirty = true;
+    if (newValue != null) {
+      checkValid;
+    }
     _gameChanged();
   }
 

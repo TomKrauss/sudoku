@@ -16,19 +16,37 @@ import 'package:sudoku/matrix.dart';
 ///
 /// Widget displaying one cell in the Sudoku board.
 ///
-class CellWidget extends StatelessWidget {
+class CellWidget extends StatefulWidget {
   final bool showTips;
   final FocusNode focusNode;
   final double cellSize;
   final TextInputFormatter inputFilter;
-  const CellWidget(this.cell, this.onChanged,
-      {required this.showTips, required this.focusNode, required this.editable,
-        required this.cellSize, super.key, required this.onToggleCellMark, required this.inputFilter});
   final Cell cell;
   final void Function(String? newVal)? onChanged;
   final void Function() onToggleCellMark;
   final bool editable;
 
+
+  const CellWidget(this.cell, this.onChanged,
+      {required this.showTips, required this.focusNode, required this.editable,
+        required this.cellSize, super.key, required this.onToggleCellMark, required this.inputFilter});
+
+  @override
+  State<StatefulWidget> createState() => CellWidgetState();
+}
+
+///
+/// The state of a Sudoko Cell widget.
+///
+class CellWidgetState extends State<CellWidget> {
+  double get cellSize => widget.cellSize;
+  FocusNode get focusNode => widget.focusNode;
+  bool get editable => widget.editable;
+  bool get showTips => widget.showTips;
+  Cell get cell => widget.cell;
+  TextInputFormatter get inputFilter => widget.inputFilter;
+  void Function(String? newVal)? get onChanged => widget.onChanged;
+  void Function() get onToggleCellMark => widget.onToggleCellMark;
   double get fontSize => cellSize / 3;
 
   Widget? get editWidget => editable ? TextField(
@@ -38,7 +56,15 @@ class CellWidget extends StatelessWidget {
     focusNode: focusNode,
     selectAllOnFocus: true,
     controller: TextEditingController(text: "${cell.value ?? ''}"),
-    onChanged: onChanged,
+    onChanged: (s) {
+      var c = onChanged;
+      if (c != null) {
+        c(s);
+        setState(() {
+
+        });
+      }
+    },
     onSubmitted: (s) => onToggleCellMark(),
     inputFormatters: [inputFilter],
     keyboardType: TextInputType.number,
@@ -48,7 +74,7 @@ class CellWidget extends StatelessWidget {
     if (showTips && cell.falselySolved) {
       return Colors.purple;
     }
-    if (showTips && cell.hasError) {
+    if (cell.hasError) {
       return Colors.red;
     }
     if (cell.given) {
