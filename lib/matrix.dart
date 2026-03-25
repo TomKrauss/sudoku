@@ -305,28 +305,13 @@ class Matrix {
     rand ??= Random.secure();
     row = result.row;
     col = result.col;
-    var cellRow = rowValues(row);
-    var existing = cellRow.toSet();
-    if (existing.length == gridCount) {
+    if (!recalculateAlternatives()) {
       return null;
     }
-    var cellCol = colValues(col);
-    existing.addAll(cellCol);
-    if (existing.length == gridCount) {
-      return null;
-    }
-    var cellBlock = blockValues(row, col);
-    existing.addAll(cellBlock);
-    if (existing.length == gridCount) {
-      return null;
-    }
-    var avail = List.generate(gridCount, (index) => index+1);
-    for (final v in existing) {
-      avail.remove(v);
-    }
+    var avail = List.of(cells[row][col].alternatives);
     while(avail.isNotEmpty) {
       var idx = rand.nextInt(avail.length);
-      cells[row][col].value = avail[idx];
+      setValue(row, col, avail[idx]);
       var m = Matrix.clone(this);
       var result = m.autoPlaceNewValue(col: col, row: row);
       if (result != null) {
@@ -545,7 +530,7 @@ class Matrix {
   /// Calculate the possible alternatives to be used for a cell.
   /// Return [true] if the matrix is solvable and [false] otherwise.
   ///
-  void recalculateAlternatives() {
+  bool recalculateAlternatives() {
     var cValues = <Iterable<int>>[];
     for (var i = 0; i < gridCount; i++) {
       cValues.add(colValues(i));
@@ -555,7 +540,7 @@ class Matrix {
       rValues.add(rowValues(i));
     }
     if (!cellsDo((cell, r, c) => _calculateAlternatives(r, c, rValues, cValues))) {
-      return;
+      return false;
     }
     for (var i = 0; i < rowCount; i++) {
       var row = rowAt(i);
@@ -575,6 +560,7 @@ class Matrix {
       eliminateNakedTriples(cells);
       return true;
     });
+    return true;
   }
 
   void place(List<List<int?>> init) {
@@ -785,6 +771,7 @@ class Matrix {
     final a = List<int>.generate(gridCount, (index) => index + 1).toSet();
     a.removeAll(selected);
     if (a.isEmpty) {
+      // Illegal cell detected - skip rest of calculation.
       return false;
     }
     cell.alternatives = a.toList();

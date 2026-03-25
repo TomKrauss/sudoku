@@ -78,6 +78,26 @@ x x x 1 x x x x x""");
       solved = m.solve();
       expect(solved, isNull);
     });
+    test("Mark falsely solved", () {
+      var m = Matrix.parse(
+          "x x x x x 4 "
+              "x x 3 x 2 x "
+              "2 x x x x 5 "
+              "1 x x x x 3 "
+              "x 1 x 5 x x "
+              "5 x x x x x ");
+      var mSolved = m.solve();
+      expect(mSolved, isNotNull);
+      var mGuess = Matrix.parse(
+          "2 3 5 1 2 4 "
+              "1 3 3 5 2 2 "
+              "2 1 2 3 4 5 "
+              "1 5 3 2 1 3 "
+              "5 1 4 5 1 2 "
+              "5 3 2 1 4 5 ");
+      mSolved!.markFalselyManualSolvedCells(mGuess);
+      expect(mSolved.cells[2][2].falselySolved, true);
+    });
     test("Mini Sudoku", () {
       var m = Matrix.parse(
           "x x x x x 4 "
@@ -152,6 +172,7 @@ x x x 1 x x x x x""");
     });
     test("Game Generation", () {
       for (final nEmpty in [42, 52, 57, 58, 60]) {
+        var c = DateTime.now().millisecondsSinceEpoch;
         var m1 = Matrix.empty();
         var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
         if (nEmpty < 58) {
@@ -161,16 +182,17 @@ x x x 1 x x x x x""");
           expect(m3.checkValid, true);
           expect(m2.valueCount, m2.gridCount * m2.gridCount - nEmpty);
         } else if (m2 != null) {
-          Games.logger.i("Created valid Game Matrix with $nEmpty empty slots");
+          Games.logger.i("Created valid Game Matrix with $nEmpty empty slots in ${(DateTime.now().millisecondsSinceEpoch-c)/1000}sec");
         }
       }
       for (final nEmpty in [25, 30]) {
-        var m1 = Matrix.empty(size: 12);
+        var size = 12;
+        var m1 = Matrix.empty(size: size);
         var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
         if (m2 != null) {
-          Games.logger.i("Created valid 12x12 Game Matrix with $nEmpty empty slots");
+          Games.logger.i("Created valid ${size}x$size Game Matrix with $nEmpty empty slots");
         } else {
-          Games.logger.i("Creating valid 12x12 Game Matrix with $nEmpty empty slots failed.");
+          Games.logger.i("Creating valid ${size}x$size Game Matrix with $nEmpty empty slots failed.");
           break;
         }
       }
