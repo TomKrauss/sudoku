@@ -185,8 +185,8 @@ x x x 1 x x x x x""");
           Games.logger.i("Created valid Game Matrix with $nEmpty empty slots in ${(DateTime.now().millisecondsSinceEpoch-c)/1000}sec");
         }
       }
-      for (final nEmpty in [25, 30]) {
-        var size = 12;
+      for (final nEmpty in [35, 40]) {
+        var size = 16;
         var m1 = Matrix.empty(size: size);
         var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
         if (m2 != null) {

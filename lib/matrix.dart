@@ -309,10 +309,18 @@ class Matrix {
       return null;
     }
     var avail = List.of(cells[row][col].alternatives);
+    var thresholdForSolving = gridCount*gridCount/3;
     while(avail.isNotEmpty) {
       var idx = rand.nextInt(avail.length);
       setValue(row, col, avail[idx]);
       var m = Matrix.clone(this);
+      int nValues = valueCount;
+      if (nValues > thresholdForSolving) {
+        var m2 = m.solve();
+        if (m2 != null) {
+          return m2;
+        }
+      }
       var result = m.autoPlaceNewValue(col: col, row: row);
       if (result != null) {
         return result;
@@ -372,11 +380,14 @@ class Matrix {
   /// Add a list of cells with a given [size].
   ///
   void _addCells(int size, {List<int>? columnBreaks, List<int>? rowBreaks}) {
-    columnBreaks = defaultColumnBreaks[size] ?? [3,6];
+    columnBreaks = defaultColumnBreaks[size];
+    rowBreaks = defaultRowBreaks[size];
+    if (columnBreaks == null || rowBreaks == null) {
+      throw UnsupportedError("Unsupported grid size $size.");
+    }
     blockColumnBreaks.clear();
     blockColumnBreaks.addAll(columnBreaks);
 
-    rowBreaks = defaultRowBreaks[size] ?? [3,6];
     blockRowBreaks.clear();
     blockRowBreaks.addAll(rowBreaks);
     for (var row = 0; row < size; row++) {
@@ -390,9 +401,11 @@ class Matrix {
   ///
   static final Map<int, List<int>> defaultColumnBreaks = {
     25: [5, 10, 15, 20],
+    16: [4,8,12],
     12 : [4, 8],
     9 : [3,6],
-    6 : [3]
+    6 : [3],
+    4 : [2]
   };
 
   ///
@@ -400,9 +413,11 @@ class Matrix {
   ///
   static final Map<int, List<int>> defaultRowBreaks = {
     25: [5, 10, 15, 20],
+    16: [4,8,12],
     9 : [3,6],
     12 : [3, 6, 9],
-    6 : [2,4]
+    6 : [2,4],
+    4 : [2]
   };
 
   ///
@@ -444,13 +459,13 @@ class Matrix {
   /// be identified, the two alternative values selectable for the two cells can be removed from
   /// the alternatives of all other cells in the given set of cells.
   ///
-  void eliminateNakedTriples(List<Cell> cells) {
+  bool eliminateNakedTriples(List<Cell> cells) {
     Cell? first;
     Cell? second;
     Cell? third;
     var applicableCells = cells.where((c) => c.alternatives.length == 2 || c.alternatives.length == 3).toList();
     if (applicableCells.length < 3) {
-      return;
+      return true;
     }
     for (int i = 0; i < applicableCells.length-2; i++) {
       first = applicableCells[i];
@@ -470,6 +485,7 @@ class Matrix {
         }
       }
     }
+    return true;
   }
 
   ///
@@ -517,13 +533,17 @@ class Matrix {
   /// Detect hidden singles in a house of cells and eliminate the "non-singles" from
   /// the list of alternatives.
   ///
-  void findHiddenSingles(List<Cell> cells) {
+  bool findHiddenSingles(List<Cell> cells) {
     for (var i = 1; i < gridCount; i++) {
       var matching = cells.where((c) => c.value == null && c.alternatives.contains(i));
       if (matching.length == 1) {
         matching.first.alternatives.removeWhere((v) => v != i);
+        if (matching.first.alternatives.isEmpty) {
+          return false;
+        }
       }
     }
+    return true;
   }
 
   ///
@@ -544,23 +564,34 @@ class Matrix {
     }
     for (var i = 0; i < rowCount; i++) {
       var row = rowAt(i);
-      findHiddenSingles(row);
+      if (!findHiddenSingles(row)) {
+        return false;
+      }
       eliminateNakedPairs(row);
-      eliminateNakedTriples(row);
+      if (!eliminateNakedTriples(row)) {
+        return false;
+      }
     }
     for (var j = 0; j < columnCount; j++) {
       var column = columnAt(j);
-      findHiddenSingles(column);
+      if (!findHiddenSingles(column)) {
+        return false;
+      }
       eliminateNakedPairs(column);
-      eliminateNakedTriples(column);
+      if (!eliminateNakedTriples(column)) {
+        return false;
+      }
     }
-    blocksDo((cells) {
-      findHiddenSingles(cells);
+    return blocksDo((cells) {
+      if (!findHiddenSingles(cells)) {
+        return false;
+      }
       eliminateNakedPairs(cells);
-      eliminateNakedTriples(cells);
+      if (!eliminateNakedTriples(cells)) {
+        return false;
+      }
       return true;
     });
-    return true;
   }
 
   void place(List<List<int?>> init) {
@@ -695,17 +726,18 @@ class Matrix {
     return solved;
   }
 
-  void blocksDo(bool Function(List<Cell> blockCells) callback) {
+  bool blocksDo(bool Function(List<Cell> blockCells) callback) {
     var startRows = [0, ...blockRowBreaks];
     var startColumns = [0, ...blockColumnBreaks];
     for (int r = 0; r < startRows.length; r++) {
       for (int c = 0; c < startColumns.length; c++) {
         final cells = blockCells(startRows[r], startColumns[c]);
         if (!callback(cells.toList())) {
-          return;
+          return false;
         }
       }
     }
+    return true;
   }
 
   bool get checkValid {
@@ -849,8 +881,7 @@ class Matrix {
   ///
   bool resolveDeterministicCases() {
     bool resolved = true;
-    recalculateAlternatives();
-    if (!solvable) {
+    if (!recalculateAlternatives() || !solvable) {
       return false;
     }
     while (resolved) {
