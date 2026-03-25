@@ -306,10 +306,16 @@ class Matrix {
     row = result.row;
     col = result.col;
     var cellRow = rowValues(row);
-    var cellCol = colValues(col);
-    var cellBlock = blockValues(row, col);
     var existing = cellRow.toSet();
+    if (existing.length == gridCount) {
+      return null;
+    }
+    var cellCol = colValues(col);
     existing.addAll(cellCol);
+    if (existing.length == gridCount) {
+      return null;
+    }
+    var cellBlock = blockValues(row, col);
     existing.addAll(cellBlock);
     if (existing.length == gridCount) {
       return null;
@@ -619,8 +625,14 @@ class Matrix {
     }
   }
 
+  final Map<int, List<Cell>> _blockCellCache = {};
+
   Iterable<Cell> blockCells(int row, int col) {
-    var result = <Cell>[];
+    var result = _blockCellCache[row * gridCount + col];
+    if (result != null) {
+      return result;
+    }
+    result = <Cell>[];
     int rowStart = 0;
     int rowEnd = blockRowBreaks[0];
     int columnStart = 0;
@@ -641,11 +653,19 @@ class Matrix {
         break;
       }
     }
+    var cacheIdx = rowStart * gridCount + columnStart;
+    var result2 = _blockCellCache[cacheIdx];
+    if (result2 != null) {
+      _blockCellCache[row*gridCount + col] = result2;
+      return result2;
+    }
     for (int r = rowStart; r < rowEnd; r++) {
       for (int c = columnStart; c < columnEnd; c++) {
         result.add(cells[r][c]);
       }
     }
+    _blockCellCache[row*gridCount + col] = result;
+    _blockCellCache[cacheIdx] = result;
     return result;
   }
 

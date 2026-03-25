@@ -65,15 +65,16 @@ void main() {
       expect(solved, isNotNull);
 
       m = Matrix.parse(
-          "x x x x x 4 x x 6 "
-          "x x x 2 x 1 x 9 x "
-          "x x x x x x x x x "
-          "x 6 x x x x x 2 x "
-          "x 5 x x x x x 9 8 "
-          "x x x x x x x 7 x "
-          "x x x x x x x x x "
-          "x x x x x 2 x x x "
-          "x x x 1 x x x x x ");
+"""
+x x x x x 4 x x 6
+x x x 2 x 1 x 9 x
+x x x x x x x x x
+x 6 x x x x x 2 x
+x 5 x x x x x 9 8
+x x x x x x x 7 x
+x x x x x x x x x
+x x x x x 2 x x x
+x x x 1 x x x x x""");
       solved = m.solve();
       expect(solved, isNull);
     });
@@ -161,6 +162,16 @@ void main() {
           expect(m2.valueCount, m2.gridCount * m2.gridCount - nEmpty);
         } else if (m2 != null) {
           Games.logger.i("Created valid Game Matrix with $nEmpty empty slots");
+        }
+      }
+      for (final nEmpty in [25, 30]) {
+        var m1 = Matrix.empty(size: 12);
+        var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
+        if (m2 != null) {
+          Games.logger.i("Created valid 12x12 Game Matrix with $nEmpty empty slots");
+        } else {
+          Games.logger.i("Creating valid 12x12 Game Matrix with $nEmpty empty slots failed.");
+          break;
         }
       }
     });
