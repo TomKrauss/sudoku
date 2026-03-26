@@ -175,25 +175,31 @@ x x x 1 x x x x x""");
         var c = DateTime.now().millisecondsSinceEpoch;
         var m1 = Matrix.empty();
         var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
+        var size = m1.gridCount;
         if (nEmpty < 58) {
           expect(m2, isNotNull,
-              reason: "Cannot generate game with $nEmpty empty slots.");
+              reason: "Cannot generate ${size}x$size game with $nEmpty empty slots.");
           var m3 = Matrix.parse(m2!.debugPrint());
           expect(m3.checkValid, true);
           expect(m2.valueCount, m2.gridCount * m2.gridCount - nEmpty);
         } else if (m2 != null) {
-          Games.logger.i("Created valid Game Matrix with $nEmpty empty slots in ${(DateTime.now().millisecondsSinceEpoch-c)/1000}sec");
+          Games.logger.i("Created valid ${size}x$size game matrix with $nEmpty empty slots in ${(DateTime.now().millisecondsSinceEpoch-c)/1000}sec");
         }
       }
-      for (final nEmpty in [35, 40]) {
-        var size = 16;
-        var m1 = Matrix.empty(size: size);
-        var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
-        if (m2 != null) {
-          Games.logger.i("Created valid ${size}x$size Game Matrix with $nEmpty empty slots");
-        } else {
-          Games.logger.i("Creating valid ${size}x$size Game Matrix with $nEmpty empty slots failed.");
-          break;
+      for (final size in [6, 16]) {
+        int n1 = size == 6 ? 15 : 50;
+        int n2 = size == 6 ? 20 : 55;
+        for (final nEmpty in [n1, n2]) {
+          var m1 = Matrix.empty(size: size);
+          var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
+          if (m2 != null) {
+            Games.logger.i(
+                "Created valid ${size}x$size Game Matrix with $nEmpty empty slots");
+          } else {
+            Games.logger.i(
+                "Creating valid ${size}x$size Game Matrix with $nEmpty empty slots failed.");
+            break;
+          }
         }
       }
     });

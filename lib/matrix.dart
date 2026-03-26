@@ -277,17 +277,16 @@ class Matrix {
     return autoPlaceNewValue(col: 0, row: 0);
   }
 
-  bool _isEmpty(Cell cell, bool empty) => empty ? cell.value == null : cell.value != null;
-
-  ({int row, int col})? findNextEmpty(int row, int col, {bool empty = true}) {
-    while(row < gridCount) {
-      while(col < gridCount) {
-        if (_isEmpty(cells[row][col], empty)) {
+  ({int row, int col})? findNextEmpty(int row, int col) {
+    var total = gridCount;
+    while(row < total) {
+      while(col < total) {
+        if (cells[row][col].value == null) {
           return (row: row, col: col);
         }
-        col++;
+        col ++;
       }
-      if (col >= gridCount) {
+      if (col >= total) {
         row++;
         col = 0;
       } else {
@@ -496,7 +495,7 @@ class Matrix {
   /// be identified, the two alternative values selectable for the two cells can be removed from
   /// the alternatives of all other cells in the given set of cells.
   ///
-  void eliminateNakedPairs(List<Cell> cells) {
+  bool eliminateNakedPairs(List<Cell> cells) {
     Cell? first;
     Cell? second;
     for (var i = 0; i < cells.length-1; i++) {
@@ -522,11 +521,15 @@ class Matrix {
     if (first != null) {
       for (var i = 0; i < cells.length-1; i++) {
         final cell = cells[i];
-        if (cell != first && cell != second) {
+        if (cell.value == null && cell != first && cell != second) {
           cell.alternatives.removeWhere((a) => first!.alternatives.contains(a));
+          if (cell.alternatives.isEmpty) {
+            return false;
+          }
         }
       }
     }
+    return true;
   }
 
   ///
@@ -534,7 +537,7 @@ class Matrix {
   /// the list of alternatives.
   ///
   bool findHiddenSingles(List<Cell> cells) {
-    for (var i = 1; i < gridCount; i++) {
+    for (var i = 1; i <= gridCount; i++) {
       var matching = cells.where((c) => c.value == null && c.alternatives.contains(i));
       if (matching.length == 1) {
         matching.first.alternatives.removeWhere((v) => v != i);
@@ -567,7 +570,9 @@ class Matrix {
       if (!findHiddenSingles(row)) {
         return false;
       }
-      eliminateNakedPairs(row);
+      if (!eliminateNakedPairs(row)) {
+        return false;
+      }
       if (!eliminateNakedTriples(row)) {
         return false;
       }
@@ -577,21 +582,14 @@ class Matrix {
       if (!findHiddenSingles(column)) {
         return false;
       }
-      eliminateNakedPairs(column);
+      if (!eliminateNakedPairs(column)) {
+        return false;
+      }
       if (!eliminateNakedTriples(column)) {
         return false;
       }
     }
-    return blocksDo((cells) {
-      if (!findHiddenSingles(cells)) {
-        return false;
-      }
-      eliminateNakedPairs(cells);
-      if (!eliminateNakedTriples(cells)) {
-        return false;
-      }
-      return true;
-    });
+    return blocksDo((cells) => findHiddenSingles(cells)&& eliminateNakedPairs(cells) && eliminateNakedTriples(cells));
   }
 
   void place(List<List<int?>> init) {
