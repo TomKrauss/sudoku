@@ -100,8 +100,8 @@ class Game {
     if (matrix == null) {
       return;
     }
-    matrix.recalculateAlternatives();
-    if (_playingMatrix != null) {
+    matrix.recalculateAlternatives(breakOnError: false);
+    if (_playingMatrix != null && _playingMatrix != matrix) {
       matrix.markFalselyManualSolvedCells(_playingMatrix!);
     }
     matrix.checkValid;

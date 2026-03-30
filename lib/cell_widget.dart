@@ -25,11 +25,11 @@ class CellWidget extends StatefulWidget {
   final void Function(String? newVal)? onChanged;
   final void Function() onToggleCellMark;
   final bool editable;
-
+  final bool highlighted;
 
   const CellWidget(this.cell, this.onChanged,
       {required this.showTips, required this.focusNode, required this.editable,
-        required this.cellSize, super.key, required this.onToggleCellMark, required this.inputFilter});
+        required this.cellSize, super.key, required this.onToggleCellMark, required this.inputFilter, required this.highlighted});
 
   @override
   State<StatefulWidget> createState() => CellWidgetState();
@@ -53,6 +53,7 @@ class CellWidgetState extends State<CellWidget> {
     style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: fontSize),
     decoration: InputDecoration(border: InputBorder.none, counterText: ""),
     textAlign: TextAlign.center,
+
     focusNode: focusNode,
     selectAllOnFocus: true,
     controller: TextEditingController(text: "${cell.value ?? ''}"),
@@ -126,6 +127,7 @@ class CellWidgetState extends State<CellWidget> {
       child: Container(
           width: cellSize,
           height: cellSize,
+          color: widget.highlighted ? Colors.lightBlue.shade100 : null,
           alignment: Alignment.center,
           child:
           Stack(

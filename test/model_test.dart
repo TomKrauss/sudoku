@@ -203,6 +203,22 @@ x x x 1 x x x x x""");
         }
       }
     });
+    test("Calculate Alternatives", () {
+      var m = Matrix.parse(
+    """
+    _ 5 _ _ 3 _ _ _ _
+    _ 8 _ _ 1 4 _ 5 _
+    _ _ 3 _ 2 9 _ _ _
+    3 _ 2 _ 9 _ _ _ _
+    _ 7 _ 1 _ 5 _ 4 _
+    _ _ 5 2 6 7 _ _ _
+    _ _ _ 6 4 _ _ _ _
+    _ 4 _ _ 8 _ _ 2 _
+    _ _ _ _ 5 _ _ _ _
+    """);
+      m.recalculateAlternatives();
+      expect(m.cells[6][0].alternatives.contains(6), false);
+    });
     test("Comparison", () {
       var m1 = Matrix.empty();
       var m2 = Games.sample;

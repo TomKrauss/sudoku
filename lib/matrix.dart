@@ -573,7 +573,7 @@ class Matrix {
   /// Calculate the possible alternatives to be used for a cell.
   /// Return [true] if the matrix is solvable and [false] otherwise.
   ///
-  bool recalculateAlternatives() {
+  bool recalculateAlternatives({bool breakOnError = true}) {
     var cValues = <Iterable<int>>[];
     for (var i = 0; i < gridCount; i++) {
       cValues.add(colValues(i));
@@ -582,34 +582,34 @@ class Matrix {
     for (var i = 0; i < gridCount; i++) {
       rValues.add(rowValues(i));
     }
-    if (!cellsDo((cell, r, c) => _calculateAlternatives(r, c, rValues, cValues))) {
+    if (!cellsDo((cell, r, c) => _calculateAlternatives(r, c, rValues, cValues, breakOnError))) {
       return false;
     }
     for (var i = 0; i < rowCount; i++) {
       var row = rowAt(i);
-      if (!findHiddenSingles(row)) {
+      if (!findHiddenSingles(row) && breakOnError) {
         return false;
       }
-      if (!eliminateNakedPairs(row)) {
+      if (!eliminateNakedPairs(row) && breakOnError) {
         return false;
       }
-      if (!eliminateNakedTriples(row)) {
+      if (!eliminateNakedTriples(row) && breakOnError) {
         return false;
       }
     }
     for (var j = 0; j < columnCount; j++) {
       var column = columnAt(j);
-      if (!findHiddenSingles(column)) {
+      if (!findHiddenSingles(column) && breakOnError) {
         return false;
       }
-      if (!eliminateNakedPairs(column)) {
+      if (!eliminateNakedPairs(column) && breakOnError) {
         return false;
       }
-      if (!eliminateNakedTriples(column)) {
+      if (!eliminateNakedTriples(column) && breakOnError) {
         return false;
       }
     }
-    return blocksDo((cells) => findHiddenSingles(cells)&& eliminateNakedPairs(cells) && eliminateNakedTriples(cells));
+    return blocksDo((cells) => findHiddenSingles(cells) && eliminateNakedPairs(cells) && eliminateNakedTriples(cells));
   }
 
   void place(List<List<int?>> init) {
@@ -800,7 +800,7 @@ class Matrix {
   ///
   /// Return [false] if the cell cannot be solved any more.
   ///
-  bool _calculateAlternatives(int row, int col, List<Iterable<int>> rowValues, List<Iterable<int>> colValues) {
+  bool _calculateAlternatives(int row, int col, List<Iterable<int>> rowValues, List<Iterable<int>> colValues, bool breakOnError) {
     var cell = cells[row][col];
     if (cell.value != null) {
       cell.alternatives = {};
@@ -813,7 +813,7 @@ class Matrix {
     };
     final a = _allValues.toSet();
     a.removeAll(selected);
-    if (a.isEmpty) {
+    if (a.isEmpty && breakOnError) {
       // Illegal cell detected - skip rest of calculation.
       return false;
     }

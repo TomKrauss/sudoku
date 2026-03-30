@@ -17,7 +17,23 @@ import 'package:markdown_widget/markdown_widget.dart';
 import 'package:sudoku/cell_widget.dart';
 import 'package:sudoku/grid_paper.dart';
 import 'package:sudoku/input_dialogs.dart';
+import 'package:sudoku/matrix.dart';
 import 'package:sudoku/model.dart';
+
+///
+/// Options affecting the way the board displays the games.
+///
+class BoardOptions {
+  ///
+  /// Whether the alternatives should be displayed for each cell.
+  ///
+  bool showTips = false;
+  ///
+  /// Whether all cells having a candidate matching the current
+  /// cell value should be highlighted.
+  ///
+  bool highlightCells = false;
+}
 
 ///
 /// Main Entry Point into the Sudoku Application
@@ -54,9 +70,10 @@ class SudokuBoard extends StatefulWidget {
 
 class _SudokuBoardState extends State<SudokuBoard> {
   final Map<Point<int>, FocusNode> focusNodes = {};
-  bool _showTips = false;
+  BoardOptions options = BoardOptions();
   final games = Games();
   Game? model;
+  Cell? focusCell;
   bool _helpPage = false;
 
   @override
@@ -90,8 +107,20 @@ class _SudokuBoardState extends State<SudokuBoard> {
   ///
   /// Returns the focus node for a given cell in a game
   ///
-  FocusNode forCell(Point<int> cell) =>
-      focusNodes.putIfAbsent(cell, FocusNode.new);
+  FocusNode forCell(Point<int> cell, [Cell? c]) =>
+      focusNodes.putIfAbsent(cell, () {
+        var result = FocusNode();
+        result.addListener(() {
+          if (c?.value != null && options.highlightCells) {
+            if (focusCell != c) {
+              setState(() {
+                focusCell = c;
+              });
+            }
+          }
+        });
+        return result;
+      });
 
   ///
   /// Load a game from the list of games available.
@@ -207,7 +236,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   /// check the validity of the matrix and alternate values for each cell.
   ///
   void onCurrentGameChanged() {
-    if (_showTips) {
+    if (options.showTips) {
       setState(() {
         model?.onChanged();
       });
@@ -277,8 +306,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
             return;
           }
         }
-        var cell = forCell(p);
-        cell.requestFocus();
+        var focusNode = forCell(p);
+        focusNode.requestFocus();
       }
     }
   }
@@ -369,9 +398,9 @@ class _SudokuBoardState extends State<SudokuBoard> {
                     divisions: localModel.gridCount,
                     majorGridColumnBreaks: matrix?.blockColumnBreaks ?? [3, 6],
                     majorGridRowBreaks: matrix?.blockRowBreaks ?? [3, 6],
-                    color: (!_showTips || localModel.current?.solvable == true)
+                    color: (!options.showTips || localModel.current?.solvable == true)
                         ? colorScheme.primary
-                        : colorScheme.onError,
+                        : colorScheme.error,
                     interval: localModel.gridCount * cellSize,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -403,10 +432,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
                                       cellSize: cellSize,
                                       inputFilter: filter,
                                       focusNode: forCell(
-                                        localModel.placementOf(c),
+                                        localModel.placementOf(c),c
                                       ),
+                                      highlighted: c.alternatives.contains(focusCell?.value) || c.value == focusCell?.value,
                                       showTips:
-                                          _showTips ||
+                                          options.showTips ||
                                           localModel.gameMode ==
                                               GameMode.solved,
                                       editable:
@@ -446,12 +476,24 @@ class _SudokuBoardState extends State<SudokuBoard> {
                     child: CheckboxListTile(
                       onChanged: (v) {
                         setState(() {
-                          _showTips = v == true;
+                          options.showTips = v == true;
                         });
                         onCurrentGameChanged();
                       },
-                      value: _showTips,
+                      value: options.showTips,
                       title: Text("Show Tips"),
+                    ),
+                  ),
+                  Flexible(
+                    child: CheckboxListTile(
+                      onChanged: (v) {
+                        setState(() {
+                          options.highlightCells = v == true;
+                        });
+                        onCurrentGameChanged();
+                      },
+                      value: options.highlightCells,
+                      title: Text("Highlight Cells"),
                     ),
                   ),
                 ],
