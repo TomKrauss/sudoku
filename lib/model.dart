@@ -232,6 +232,7 @@ class Games {
   final StreamController<Game?> _streamController = BehaviorSubject.seeded(Game(sample));
 
   int get numberOfGames => games.length;
+  static bool _operationRunning = false;
 
   void addGame(Game game) {
     if (games.contains(game)) {
@@ -249,22 +250,31 @@ class Games {
   /// is normalized to a Sudoko with size 9.
   ///
   Future<void> generateGame({int numberOfEmptyPlaces = 57, String? name, int? size}) async {
-    _streamController.add(null);
-    Matrix? m = Matrix.empty(size: size);
-    if (size != null && size != 9) {
-      numberOfEmptyPlaces = (numberOfEmptyPlaces * size * size / 81).round();
+    if (_operationRunning) {
+      return;
     }
-    // give the UI a chance to repaint.
-    m = await Isolate.run<Matrix?>(() => m!.generateGame(numberOfEmptyPlaces: numberOfEmptyPlaces));
-    if (m != null) {
-      var g = Game(m);
-      if (name != null) {
-        g.name = name;
+    _operationRunning = true;
+    try {
+      _streamController.add(null);
+      Matrix? m = Matrix.empty(size: size);
+      if (size != null && size != 9) {
+        numberOfEmptyPlaces = (numberOfEmptyPlaces * size * size / 81).round();
       }
-      addGame(g);
-      _streamController.add(g);
-    } else {
-      await selectGameNamed(games.first.name ?? "");
+      // give the UI a chance to repaint.
+      m = await Isolate.run<Matrix?>(() =>
+          m!.generateGame(numberOfEmptyPlaces: numberOfEmptyPlaces));
+      if (m != null) {
+        var g = Game(m);
+        if (name != null) {
+          g.name = name;
+        }
+        addGame(g);
+        _streamController.add(g);
+      } else {
+        await selectGameNamed(games.first.name ?? "");
+      }
+    } finally {
+      _operationRunning = false;
     }
   }
 

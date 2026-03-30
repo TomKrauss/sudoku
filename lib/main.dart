@@ -35,10 +35,10 @@ class SudokuApplication extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) => MaterialApp(
-      title: 'Sudoku Solver',
-      debugShowCheckedModeBanner: false,
-      home: const SudokuBoard(title: 'Edit a Sudoku and solve it'),
-    );
+    title: 'Sudoku Solver',
+    debugShowCheckedModeBanner: false,
+    home: const SudokuBoard(title: 'Edit a Sudoku and solve it'),
+  );
 }
 
 ///
@@ -58,12 +58,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
   final games = Games();
   Game? model;
   bool _helpPage = false;
-  late Future<Object?> initialize;
 
   @override
   void initState() {
     super.initState();
-    initialize = games.initialize();
+    games.initialize();
   }
 
   void initWithSample() {
@@ -73,7 +72,9 @@ class _SudokuBoardState extends State<SudokuBoard> {
     });
   }
 
-  bool get editing => model?.gameMode == GameMode.playing || model?.gameMode == GameMode.creating;
+  bool get editing =>
+      model?.gameMode == GameMode.playing ||
+      model?.gameMode == GameMode.creating;
   bool get playing => model?.gameMode == GameMode.playing;
   bool get creatingGame => model?.gameMode == GameMode.creating;
 
@@ -89,14 +90,19 @@ class _SudokuBoardState extends State<SudokuBoard> {
   ///
   /// Returns the focus node for a given cell in a game
   ///
-  FocusNode forCell(Point<int> cell) => focusNodes.putIfAbsent(cell, FocusNode.new);
+  FocusNode forCell(Point<int> cell) =>
+      focusNodes.putIfAbsent(cell, FocusNode.new);
 
   ///
   /// Load a game from the list of games available.
   ///
   Future<void> loadGame(Game model) async {
     if (model.dirty) {
-      var result = await showAlertDialog(context, message: "Do you want to save the current game?", buttons: ["Yes", "No", "Cancel"]);
+      var result = await showAlertDialog(
+        context,
+        message: "Do you want to save the current game?",
+        buttons: ["Yes", "No", "Cancel"],
+      );
       if (result == "Cancel") {
         return;
       }
@@ -131,9 +137,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
   }
 
   void _generateGame(NewGameOptions options) {
-    games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces,
-          name: options.name,
-          size: options.gridSize);
+    games.generateGame(
+      numberOfEmptyPlaces: options.numberOfEmptyPlaces,
+      name: options.name,
+      size: options.gridSize,
+    );
   }
 
   ///
@@ -190,9 +198,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
       }
     }
     onCurrentGameChanged();
-    setState(() {
-
-    });
+    setState(() {});
   }
 
   ///
@@ -217,20 +223,20 @@ class _SudokuBoardState extends State<SudokuBoard> {
     var newY = p.y;
     while (newX < 0) {
       newX += rowLength;
-      newY --;
+      newY--;
     }
     while (newX >= rowLength) {
       newX -= rowLength;
-      newY ++;
+      newY++;
     }
-    while(newY < 0) {
+    while (newY < 0) {
       newY += model!.rowCount;
       newX--;
       if (newX < 0) {
         newX += rowLength;
       }
     }
-    while(newY >= model!.rowCount) {
+    while (newY >= model!.rowCount) {
       newY -= model!.rowCount;
       newX++;
       if (newX >= rowLength) {
@@ -263,10 +269,10 @@ class _SudokuBoardState extends State<SudokuBoard> {
     for (final entry in focusNodes.entries) {
       if (entry.value.hasFocus) {
         var p = entry.key;
-        p = wrapPoint(Point(p.x+delta, p.y));
+        p = wrapPoint(Point(p.x + delta, p.y));
         var originalPoint = p;
         while (model?.isCellEditable(p.x, p.y) == false) {
-          p = wrapPoint(Point(p.x+delta, p.y));
+          p = wrapPoint(Point(p.x + delta, p.y));
           if (p == originalPoint) {
             return;
           }
@@ -277,192 +283,242 @@ class _SudokuBoardState extends State<SudokuBoard> {
     }
   }
 
-  ButtonStyle get buttonStyle => ElevatedButton.styleFrom(minimumSize: Size(165, 35));
+  ButtonStyle get buttonStyle =>
+      ElevatedButton.styleFrom(minimumSize: Size(165, 35));
 
   Future<String> _loadHelpFile() => rootBundle.loadString("lib/assets/help.md");
 
-  Widget get helpArea =>
-    FutureBuilder(future: _loadHelpFile(), builder: (context, snapshot) =>
-      Padding(padding: EdgeInsets.all(10), child: Column(children: [
-        Expanded(
-            child: snapshot.data == null ? Text("") : MarkdownWidget(data: snapshot.data!)),
-        ElevatedButton(onPressed: toggleHelp,
+  Widget get helpArea => FutureBuilder(
+    future: _loadHelpFile(),
+    builder: (context, snapshot) => Padding(
+      padding: EdgeInsets.all(10),
+      child: Column(
+        children: [
+          Expanded(
+            child: snapshot.data == null
+                ? Text("")
+                : MarkdownWidget(data: snapshot.data!),
+          ),
+          ElevatedButton(
+            onPressed: toggleHelp,
             style: buttonStyle,
-            child: Text("Back to Game")),
-      ])));
-
+            child: Text("Back to Game"),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget get contentArea {
     var width = (MediaQuery.widthOf(context) - 50);
     var height = (MediaQuery.heightOf(context) - 300);
-    return StreamBuilder(stream: games.current, builder: (context, snapshot) {
-      var localModel = snapshot.data;
-      if (localModel == null) {
-        return Center(child: Column(children: [Text("Operation in Progress. Please wait."), SizedBox(height: 20), CircularProgressIndicator()]));
-      }
-      model = localModel;
-      var cellSize = (height > width ? width : height) / localModel.gridCount;
-      var matrix = localModel.current;
-      matrix?.onCellErrorStateChanged = (c) {
-        setState(() {
-
-        });
-      };
-      var filter = localModel.inputFilter;
-      var colorScheme = Theme
-          .of(context)
-          .colorScheme;
-      return SingleChildScrollView(
+    return StreamBuilder(
+      stream: games.current,
+      builder: (context, snapshot) {
+        var localModel = snapshot.data;
+        if (localModel == null) {
+          return Center(
+            child: Card(
+              margin: EdgeInsets.all(20),
+              child: Padding(
+                padding: EdgeInsetsGeometry.all(50),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("Operation in Progress. Please wait."),
+                    SizedBox(height: 20),
+                    CircularProgressIndicator(),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+        model = localModel;
+        var cellSize = (height > width ? width : height) / localModel.gridCount;
+        var matrix = localModel.current;
+        matrix?.onCellErrorStateChanged = (c) {
+          setState(() {});
+        };
+        var filter = localModel.inputFilter;
+        var colorScheme = Theme.of(context).colorScheme;
+        return SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.max,
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-              child: CallbackShortcuts(
-                bindings: <ShortcutActivator, VoidCallback>{
-                  const SingleActivator(LogicalKeyboardKey.arrowUp): () {
-                    moveCellFocusBy(-localModel.columnCount);
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: CallbackShortcuts(
+                  bindings: <ShortcutActivator, VoidCallback>{
+                    const SingleActivator(LogicalKeyboardKey.arrowUp): () {
+                      moveCellFocusBy(-localModel.columnCount);
+                    },
+                    const SingleActivator(LogicalKeyboardKey.arrowDown): () {
+                      moveCellFocusBy(localModel.columnCount);
+                    },
+                    const SingleActivator(LogicalKeyboardKey.arrowRight): () {
+                      moveCellFocusBy(1);
+                    },
+                    const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
+                      moveCellFocusBy(-1);
+                    },
                   },
-                  const SingleActivator(LogicalKeyboardKey.arrowDown): () {
-                    moveCellFocusBy(localModel.columnCount);
-                  },
-                  const SingleActivator(LogicalKeyboardKey.arrowRight): () {
-                    moveCellFocusBy(1);
-                  },
-                  const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
-                    moveCellFocusBy(-1);
-                  },
-                },
-                child: CustomGridPaper(
-                  divisions: localModel.gridCount,
-                  majorGridColumnBreaks: matrix?.blockColumnBreaks ?? [3, 6],
-                  majorGridRowBreaks: matrix?.blockRowBreaks ?? [3, 6],
-                  color: (!_showTips || localModel.current?.solvable == true)
-                      ? colorScheme.primary
-                      : colorScheme.onError,
-                  interval: localModel.gridCount * cellSize,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: localModel.cells
-                        .map(
-                          (l) =>
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: l
-                                .map(
-                                  (c) =>
-                                  CellWidget(
-                                    c,
-                                    editing
-                                        ? (s) {
-                                      localModel.editCellValue(c, s);
-                                      onCurrentGameChanged();
-                                      if (localModel.gridCount < 10) {
-                                        WidgetsBinding.instance
-                                            .addPostFrameCallback((_) {
-                                          moveCellFocusBy(
-                                              s?.isEmpty == true ? 0 : 1);
+                  child: CustomGridPaper(
+                    divisions: localModel.gridCount,
+                    majorGridColumnBreaks: matrix?.blockColumnBreaks ?? [3, 6],
+                    majorGridRowBreaks: matrix?.blockRowBreaks ?? [3, 6],
+                    color: (!_showTips || localModel.current?.solvable == true)
+                        ? colorScheme.primary
+                        : colorScheme.onError,
+                    interval: localModel.gridCount * cellSize,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: localModel.cells
+                          .map(
+                            (l) => Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: l
+                                  .map(
+                                    (c) => CellWidget(
+                                      c,
+                                      editing
+                                          ? (s) {
+                                              localModel.editCellValue(c, s);
+                                              onCurrentGameChanged();
+                                              if (localModel.gridCount < 10) {
+                                                WidgetsBinding.instance
+                                                    .addPostFrameCallback((_) {
+                                                      moveCellFocusBy(
+                                                        s?.isEmpty == true
+                                                            ? 0
+                                                            : 1,
+                                                      );
+                                                    });
+                                              }
+                                            }
+                                          : null,
+                                      cellSize: cellSize,
+                                      inputFilter: filter,
+                                      focusNode: forCell(
+                                        localModel.placementOf(c),
+                                      ),
+                                      showTips:
+                                          _showTips ||
+                                          localModel.gameMode ==
+                                              GameMode.solved,
+                                      editable:
+                                          editing && (creatingGame || !c.given),
+                                      onToggleCellMark: () {
+                                        setState(() {
+                                          localModel.toggleCellFoundMarker(c);
                                         });
-                                      }
-                                    }
-                                        : null,
-                                    cellSize: cellSize,
-                                    inputFilter: filter,
-                                    focusNode: forCell(localModel.placementOf(c)),
-                                    showTips: _showTips ||
-                                        localModel.gameMode == GameMode.solved,
-                                    editable: editing &&
-                                        (creatingGame || !c.given),
-                                    onToggleCellMark: () {
-                                      setState(() {
-                                        localModel.toggleCellFoundMarker(c);
-                                      });
-                                    },
-                                  ),
-                            )
-                                .toList(),
-                          ),
-                    )
-                        .toList(),
+                                      },
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          )
+                          .toList(),
+                    ),
                   ),
                 ),
-              )),
-          SizedBox(height: 20),
-          Padding(padding: EdgeInsetsGeometry.all(15),
-              child: Text("${playing ? 'Playing' : editing
-                  ? 'Editing'
-                  : 'Selected'} game: ${localModel.name}, difficulty level ${localModel
-                  .difficultyLevel}",
-                style: Theme
-                    .of(context)
-                    .textTheme
-                    .bodySmall,)),
-          Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: CheckboxListTile(
-                  onChanged: (v) {
-                    setState(() {
-                      _showTips = v == true;
-                    });
-                    onCurrentGameChanged();
-                  },
-                  value: _showTips,
-                  title: Text("Show Tips"),
+              ),
+              SizedBox(height: 20),
+              Padding(
+                padding: EdgeInsetsGeometry.all(15),
+                child: Text(
+                  "${playing
+                      ? 'Playing'
+                      : editing
+                      ? 'Editing'
+                      : 'Selected'} game: ${localModel.name}, difficulty level ${localModel.difficultyLevel}",
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
+              ),
+              Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: CheckboxListTile(
+                      onChanged: (v) {
+                        setState(() {
+                          _showTips = v == true;
+                        });
+                        onCurrentGameChanged();
+                      },
+                      value: _showTips,
+                      title: Text("Show Tips"),
+                    ),
+                  ),
+                ],
+              ),
+              Wrap(
+                alignment: WrapAlignment.spaceAround,
+                runSpacing: 10,
+                spacing: 10,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => loadGame(localModel),
+                    style: buttonStyle,
+                    child: Text("Select Game..."),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => edit(create: false),
+                    style: buttonStyle,
+                    child: Text("Play"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => generateGame(localModel),
+                    style: buttonStyle,
+                    child: Text("Generate Game..."),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => showSolution(localModel),
+                    style: buttonStyle,
+                    child: Text(
+                      localModel.gameMode == GameMode.solved
+                          ? "Clear Hints"
+                          : "Show Solution",
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: newGame,
+                    style: buttonStyle,
+                    child: Text("New Game..."),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => edit(create: true),
+                    style: buttonStyle,
+                    child: Text("Edit Game"),
+                  ),
+                  ElevatedButton(
+                    onPressed: save,
+                    style: buttonStyle,
+                    child: Text("Save"),
+                  ),
+                  ElevatedButton(
+                    onPressed: toggleHelp,
+                    style: buttonStyle,
+                    child: Text("Help"),
+                  ),
+                ],
               ),
             ],
           ),
-          Wrap(
-            alignment: WrapAlignment.spaceAround,
-            runSpacing: 10,
-            spacing: 10,
-            children: [
-              ElevatedButton(onPressed: () => loadGame(localModel),
-                  style: buttonStyle,
-                  child: Text("Select Game...")),
-              ElevatedButton(onPressed: () => edit(create: false),
-                  style: buttonStyle,
-                  child: Text("Play")),
-              ElevatedButton(onPressed: () => generateGame(localModel),
-                  style: buttonStyle,
-                  child: Text("Generate Game...")),
-              ElevatedButton(onPressed: () => showSolution(localModel),
-                  style: buttonStyle,
-                  child: Text(localModel.gameMode == GameMode.solved
-                      ? "Clear Hints"
-                      : "Show Solution")),
-              ElevatedButton(onPressed: newGame,
-                  style: buttonStyle,
-                  child: Text("New Game...")),
-              ElevatedButton(onPressed: () => edit(create: true),
-                  style: buttonStyle,
-                  child: Text("Edit Game")),
-              ElevatedButton(
-                  onPressed: save, style: buttonStyle, child: Text("Save")),
-              ElevatedButton(
-                  onPressed: toggleHelp,
-                  style: buttonStyle,
-                  child: Text("Help")),
-            ],
-          ),
-        ],
-      ));
-    });
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
-      body: _helpPage ? helpArea : FutureBuilder(future: initialize, builder: (context, snapshot) {
-        if (snapshot.data == null) {
-          return CircularProgressIndicator();
-        }
-        return contentArea;
-      })
+    appBar: AppBar(title: Text(widget.title)),
+    body: _helpPage
+        ? helpArea
+        : contentArea
   );
 }
