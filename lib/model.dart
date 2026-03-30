@@ -11,6 +11,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 
 import 'package:flutter/services.dart';
@@ -249,12 +250,12 @@ class Games {
   ///
   Future<void> generateGame({int numberOfEmptyPlaces = 57, String? name, int? size}) async {
     _streamController.add(null);
-    // give the UI a chance to repaint.
     Matrix? m = Matrix.empty(size: size);
     if (size != null && size != 9) {
       numberOfEmptyPlaces = (numberOfEmptyPlaces * size * size / 81).round();
     }
-    m = await m.generateGame(numberOfEmptyPlaces: numberOfEmptyPlaces);
+    // give the UI a chance to repaint.
+    m = await Isolate.run<Matrix?>(() => m!.generateGame(numberOfEmptyPlaces: numberOfEmptyPlaces));
     if (m != null) {
       var g = Game(m);
       if (name != null) {

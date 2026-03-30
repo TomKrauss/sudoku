@@ -246,8 +246,8 @@ class Matrix {
   ///
   /// Generate a game matrix.
   ///
-  Future<Matrix?> generateGame({required int numberOfEmptyPlaces}) async {
-    var m = await generateValidMatrix();
+  Matrix? generateGame({required int numberOfEmptyPlaces}) {
+    var m = generateValidMatrix();
     if (m == null) {
       return null;
     }
@@ -268,7 +268,7 @@ class Matrix {
   ///
   /// Generate a new valid Sudoku Matrix.
   ///
-  Future<Matrix?> generateValidMatrix() async {
+  Matrix? generateValidMatrix() {
     if (solved) {
       return this;
     }
@@ -298,7 +298,7 @@ class Matrix {
     return null;
   }
 
-  Future<Matrix?> autoPlaceNewValue({Random? rand}) async {
+  Matrix? autoPlaceNewValue({Random? rand}) {
     if (!recalculateAlternatives()) {
       return null;
     }
@@ -309,8 +309,6 @@ class Matrix {
     if (result == null) {
       return this;
     }
-    // Give the UI a chance to repaint.
-    await Future<void>.delayed(Duration(milliseconds: 50));
     rand ??= Random.secure();
     var row = result.row;
     var col = result.col;
@@ -327,7 +325,7 @@ class Matrix {
           return m2;
         }
       }
-      var result = await m.autoPlaceNewValue();
+      var result = m.autoPlaceNewValue();
       if (result != null) {
         return result;
       }

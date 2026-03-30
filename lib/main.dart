@@ -130,10 +130,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
     });
   }
 
-  Future<void> _generateGame(NewGameOptions options) =>
+  void _generateGame(NewGameOptions options) {
     games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces,
-        name: options.name,
-        size: options.gridSize);
+          name: options.name,
+          size: options.gridSize);
+  }
 
   ///
   /// Create a new empty game and generate the game with options to select before .
@@ -143,7 +144,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
     if (options == null) {
       return;
     }
-    unawaited(_generateGame(options));
+    _generateGame(options);
   }
 
   ///
