@@ -47,7 +47,7 @@ class CellWidgetState extends State<CellWidget> {
   TextInputFormatter get inputFilter => widget.inputFilter;
   void Function(String? newVal)? get onChanged => widget.onChanged;
   void Function() get onToggleCellMark => widget.onToggleCellMark;
-  double get fontSize => cellSize / 3;
+  double get fontSize => cellSize < 10 ? 5 : cellSize / 3;
 
   Widget? get editWidget => editable ? TextField(
     style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: fontSize),
@@ -100,7 +100,9 @@ class CellWidgetState extends State<CellWidget> {
   List<String> get alternatives {
     var l = cell.alternatives;
     if (l.length > 7) {
-      var result = l.sublist(0, 6).map((i) => " $i ").toList();
+      var list = l.toList();
+      list.sort();
+      var result = list.sublist(0, 6).map((i) => " $i ").toList();
       result.add("...");
       return result;
     }
@@ -126,7 +128,8 @@ class CellWidgetState extends State<CellWidget> {
           height: cellSize,
           alignment: Alignment.center,
           child:
-          Stack(children:
+          Stack(
+            children:
           [?editWidget,
             if (cell.value == null || !editable) contentWidget,
             if (cell.markedAsFound) Container(decoration: ShapeDecoration(shape: CircleBorder(side: BorderSide(width: 2.0))),)

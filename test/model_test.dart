@@ -163,18 +163,18 @@ x x x 1 x x x x x""");
       expect(m2, isNotNull);
       expect(m2!.checkValid, true);
     });
-    test("Generation", () {
+    test("Generation", () async {
       var m1 = Matrix.empty();
-      var m2 = m1.generateValidMatrix();
+      var m2 = await m1.generateValidMatrix();
       expect(m2, isNotNull);
       var m3 = Matrix.parse(m2!.debugPrint());
       expect(m3.checkValid, true);
     });
-    test("Game Generation", () {
+    test("Game Generation", () async {
       for (final nEmpty in [42, 52, 57, 58, 60]) {
         var c = DateTime.now().millisecondsSinceEpoch;
         var m1 = Matrix.empty();
-        var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
+        var m2 = await m1.generateGame(numberOfEmptyPlaces: nEmpty);
         var size = m1.gridCount;
         if (nEmpty < 58) {
           expect(m2, isNotNull,
@@ -191,7 +191,7 @@ x x x 1 x x x x x""");
         int n2 = size == 6 ? 20 : 55;
         for (final nEmpty in [n1, n2]) {
           var m1 = Matrix.empty(size: size);
-          var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
+          var m2 = await m1.generateGame(numberOfEmptyPlaces: nEmpty);
           if (m2 != null) {
             Games.logger.i(
                 "Created valid ${size}x$size Game Matrix with $nEmpty empty slots");
@@ -218,12 +218,12 @@ x x x 1 x x x x x""");
     });
   });
   group("Games Tests", () {
-    test("JSON Encoding", () {
+    test("JSON Encoding", () async {
       final games = Games();
       games.clear();
       games.newGame(name: "test");
-      var m = games.current.matrix;
-      m.setValue(0, 0, 1);
+      var m = (await games.current.first)?.matrix;
+      m!.setValue(0, 0, 1);
       var encoded = games.asJson();
       var list = games.decodeGames(encoded);
       expect(list.length, 1);

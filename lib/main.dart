@@ -14,7 +14,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:markdown_widget/markdown_widget.dart';
-import 'package:rxdart/rxdart.dart';
 import 'package:sudoku/cell_widget.dart';
 import 'package:sudoku/grid_paper.dart';
 import 'package:sudoku/input_dialogs.dart';
@@ -55,29 +54,28 @@ class SudokuBoard extends StatefulWidget {
 
 class _SudokuBoardState extends State<SudokuBoard> {
   final Map<Point<int>, FocusNode> focusNodes = {};
-  final StreamController<bool> _busyController = BehaviorSubject.seeded(false);
   bool _showTips = false;
   final games = Games();
-  Game get model => games.current;
+  Game? model;
   bool _helpPage = false;
   late Future<Object?> initialize;
 
   @override
   void initState() {
     super.initState();
-    initialize = Games().initialize();
+    initialize = games.initialize();
   }
 
   void initWithSample() {
     setState(() {
       games.useSample();
-      model.gameMode = GameMode.playing;
+      model?.gameMode = GameMode.playing;
     });
   }
 
-  bool get editing => model.gameMode == GameMode.playing || model.gameMode == GameMode.creating;
-  bool get playing => model.gameMode == GameMode.playing;
-  bool get creatingGame => model.gameMode == GameMode.creating;
+  bool get editing => model?.gameMode == GameMode.playing || model?.gameMode == GameMode.creating;
+  bool get playing => model?.gameMode == GameMode.playing;
+  bool get creatingGame => model?.gameMode == GameMode.creating;
 
   @override
   void dispose() {
@@ -86,7 +84,6 @@ class _SudokuBoardState extends State<SudokuBoard> {
       n.dispose();
     }
     focusNodes.clear();
-    _busyController.close();
   }
 
   ///
@@ -95,16 +92,9 @@ class _SudokuBoardState extends State<SudokuBoard> {
   FocusNode forCell(Point<int> cell) => focusNodes.putIfAbsent(cell, FocusNode.new);
 
   ///
-  /// Generate a new Sudoku game - to be implemented.
-  ///
-  Future<void> generate() async {
-    await showAlertDialog(context, message: "Generating Sudoku Games is not yet implemented.", buttons: ["OK"]);
-  }
-
-  ///
   /// Load a game from the list of games available.
   ///
-  Future<void> loadGame() async {
+  Future<void> loadGame(Game model) async {
     if (model.dirty) {
       var result = await showAlertDialog(context, message: "Do you want to save the current game?", buttons: ["Yes", "No", "Cancel"]);
       if (result == "Cancel") {
@@ -140,23 +130,19 @@ class _SudokuBoardState extends State<SudokuBoard> {
     });
   }
 
-  set busy(bool flag) => _busyController.add(flag);
-
-  Future<void> _generateGame(NewGameOptions options) async {
-    games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces, name: options.name, size: options.gridSize);
-    model.gameMode = GameMode.playing;
-    busy = false;
-  }
+  Future<void> _generateGame(NewGameOptions options) =>
+    games.generateGame(numberOfEmptyPlaces: options.numberOfEmptyPlaces,
+        name: options.name,
+        size: options.gridSize);
 
   ///
   /// Create a new empty game and generate the game with options to select before .
   ///
-  Future<void> generateGame() async {
+  Future<void> generateGame(Game model) async {
     var options = await selectNewGameOptions(context, generateGame: true);
     if (options == null) {
       return;
     }
-    busy = true;
     unawaited(_generateGame(options));
   }
 
@@ -167,7 +153,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   ///
   void edit({bool create = false}) {
     setState(() {
-      model.gameMode = create ? GameMode.creating : GameMode.playing;
+      model?.gameMode = create ? GameMode.creating : GameMode.playing;
     });
     focusBoard();
   }
@@ -191,8 +177,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   ///
   /// Calculate the solution and show the result.
   ///
-  Future<void> showSolution() async {
-    busy = true;
+  Future<void> showSolution(Game model) async {
     if (model.gameMode == GameMode.solved) {
       model.gameMode = GameMode.playing;
     } else {
@@ -204,7 +189,6 @@ class _SudokuBoardState extends State<SudokuBoard> {
       }
     }
     onCurrentGameChanged();
-    busy = false;
     setState(() {
 
     });
@@ -218,13 +202,16 @@ class _SudokuBoardState extends State<SudokuBoard> {
   void onCurrentGameChanged() {
     if (_showTips) {
       setState(() {
-        model.onChanged();
+        model?.onChanged();
       });
     }
   }
 
   Point<int> wrapPoint(Point<int> p) {
-    final rowLength = model.columnCount;
+    final rowLength = model?.columnCount;
+    if (rowLength == null) {
+      return p;
+    }
     var newX = p.x;
     var newY = p.y;
     while (newX < 0) {
@@ -236,14 +223,14 @@ class _SudokuBoardState extends State<SudokuBoard> {
       newY ++;
     }
     while(newY < 0) {
-      newY += model.rowCount;
+      newY += model!.rowCount;
       newX--;
       if (newX < 0) {
         newX += rowLength;
       }
     }
-    while(newY >= model.rowCount) {
-      newY -= model.rowCount;
+    while(newY >= model!.rowCount) {
+      newY -= model!.rowCount;
       newX++;
       if (newX >= rowLength) {
         newX = 0;
@@ -259,7 +246,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       for (final entry in focusNodes.entries) {
         var p = entry.key;
-        if (model.isCellEditable(p.x, p.y)) {
+        if (model?.isCellEditable(p.x, p.y) == true) {
           entry.value.requestFocus();
           return;
         }
@@ -277,7 +264,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
         var p = entry.key;
         p = wrapPoint(Point(p.x+delta, p.y));
         var originalPoint = p;
-        while (!model.isCellEditable(p.x, p.y)) {
+        while (model?.isCellEditable(p.x, p.y) == false) {
           p = wrapPoint(Point(p.x+delta, p.y));
           if (p == originalPoint) {
             return;
@@ -307,146 +294,164 @@ class _SudokuBoardState extends State<SudokuBoard> {
   Widget get contentArea {
     var width = (MediaQuery.widthOf(context) - 50);
     var height = (MediaQuery.heightOf(context) - 300);
-    var cellSize = (height > width ? width : height) / model.gridCount;
-    var matrix = model.current;
-    matrix?.onCellErrorStateChanged = (c) {
-      setState(() {
+    return StreamBuilder(stream: games.current, builder: (context, snapshot) {
+      var localModel = snapshot.data;
+      if (localModel == null) {
+        return Center(child: Column(children: [Text("Operation in Progress. Please wait."), SizedBox(height: 20), CircularProgressIndicator()]));
+      }
+      model = localModel;
+      var cellSize = (height > width ? width : height) / localModel.gridCount;
+      var matrix = localModel.current;
+      matrix?.onCellErrorStateChanged = (c) {
+        setState(() {
 
-      });
-    };
-    var filter = model.inputFilter;
-    return SingleChildScrollView(child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Center(
-            child: CallbackShortcuts(
-              bindings: <ShortcutActivator, VoidCallback>{
-                const SingleActivator(LogicalKeyboardKey.arrowUp): () {
-                  moveCellFocusBy(-model.columnCount);
+        });
+      };
+      var filter = localModel.inputFilter;
+      var colorScheme = Theme
+          .of(context)
+          .colorScheme;
+      return SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+              child: CallbackShortcuts(
+                bindings: <ShortcutActivator, VoidCallback>{
+                  const SingleActivator(LogicalKeyboardKey.arrowUp): () {
+                    moveCellFocusBy(-localModel.columnCount);
+                  },
+                  const SingleActivator(LogicalKeyboardKey.arrowDown): () {
+                    moveCellFocusBy(localModel.columnCount);
+                  },
+                  const SingleActivator(LogicalKeyboardKey.arrowRight): () {
+                    moveCellFocusBy(1);
+                  },
+                  const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
+                    moveCellFocusBy(-1);
+                  },
                 },
-                const SingleActivator(LogicalKeyboardKey.arrowDown): () {
-                  moveCellFocusBy(model.columnCount);
-                },
-                const SingleActivator(LogicalKeyboardKey.arrowRight): () {
-                  moveCellFocusBy(1);
-                },
-                const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
-                  moveCellFocusBy(-1);
-                },
-              },
-              child: StreamBuilder(stream: _busyController.stream, builder: (context, snapshot) => snapshot.data != false ?
-                  CircularProgressIndicator() : CustomGridPaper(
-                divisions: model.gridCount,
-                majorGridColumnBreaks: matrix?.blockColumnBreaks ?? [3,6],
-                majorGridRowBreaks: matrix?.blockRowBreaks ?? [3,6],
-                color: (!_showTips || model.current?.solvable == true) ? Colors.black : Colors.red,
-                interval: model.gridCount * cellSize,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: model.cells
-                      .map(
-                        (l) =>
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: l
-                              .map(
-                                (c) =>
-                                CellWidget(
-                                  c,
-                                  editing
-                                      ? (s) {
-                                    model.editCellValue(c, s);
-                                    onCurrentGameChanged();
-                                    if (model.gridCount < 10) {
-                                      WidgetsBinding.instance
-                                          .addPostFrameCallback((_) {
-                                        moveCellFocusBy(
-                                            s?.isEmpty == true ? 0 : 1);
-                                      });
+                child: CustomGridPaper(
+                  divisions: localModel.gridCount,
+                  majorGridColumnBreaks: matrix?.blockColumnBreaks ?? [3, 6],
+                  majorGridRowBreaks: matrix?.blockRowBreaks ?? [3, 6],
+                  color: (!_showTips || localModel.current?.solvable == true)
+                      ? colorScheme.primary
+                      : colorScheme.onError,
+                  interval: localModel.gridCount * cellSize,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: localModel.cells
+                        .map(
+                          (l) =>
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: l
+                                .map(
+                                  (c) =>
+                                  CellWidget(
+                                    c,
+                                    editing
+                                        ? (s) {
+                                      localModel.editCellValue(c, s);
+                                      onCurrentGameChanged();
+                                      if (localModel.gridCount < 10) {
+                                        WidgetsBinding.instance
+                                            .addPostFrameCallback((_) {
+                                          moveCellFocusBy(
+                                              s?.isEmpty == true ? 0 : 1);
+                                        });
+                                      }
                                     }
-                                  }
-                                      : null,
-                                  cellSize: cellSize,
-                                  inputFilter: filter,
-                                  focusNode: forCell(model.placementOf(c)),
-                                  showTips: _showTips || model.gameMode == GameMode.solved,
-                                  editable: editing &&
-                                      (creatingGame || !c.given),
-                                  onToggleCellMark: () {
-                                    setState(() {
-                                      model.toggleCellFoundMarker(c);
-                                    });
-                                  },
-                                ),
-                          )
-                              .toList(),
-                        ),
-                  )
-                      .toList(),
+                                        : null,
+                                    cellSize: cellSize,
+                                    inputFilter: filter,
+                                    focusNode: forCell(localModel.placementOf(c)),
+                                    showTips: _showTips ||
+                                        localModel.gameMode == GameMode.solved,
+                                    editable: editing &&
+                                        (creatingGame || !c.given),
+                                    onToggleCellMark: () {
+                                      setState(() {
+                                        localModel.toggleCellFoundMarker(c);
+                                      });
+                                    },
+                                  ),
+                            )
+                                .toList(),
+                          ),
+                    )
+                        .toList(),
+                  ),
+                ),
+              )),
+          SizedBox(height: 20),
+          Padding(padding: EdgeInsetsGeometry.all(15),
+              child: Text("${playing ? 'Playing' : editing
+                  ? 'Editing'
+                  : 'Selected'} game: ${localModel.name}, difficulty level ${localModel
+                  .difficultyLevel}",
+                style: Theme
+                    .of(context)
+                    .textTheme
+                    .bodySmall,)),
+          Divider(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: CheckboxListTile(
+                  onChanged: (v) {
+                    setState(() {
+                      _showTips = v == true;
+                    });
+                    onCurrentGameChanged();
+                  },
+                  value: _showTips,
+                  title: Text("Show Tips"),
                 ),
               ),
-            ))),
-        SizedBox(height: 20),
-        Padding(padding: EdgeInsetsGeometry.all(15),
-            child: Text("${playing ? 'Playing' : editing
-                ? 'Editing'
-                : 'Selected'} game: ${model.name}, difficulty level ${model
-                .difficultyLevel}", style: Theme
-                .of(context)
-                .textTheme
-                .bodySmall,)),
-        Divider(),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Flexible(
-              child: CheckboxListTile(
-                onChanged: (v) {
-                  setState(() {
-                    _showTips = v == true;
-                  });
-                  onCurrentGameChanged();
-                },
-                value: _showTips,
-                title: Text("Show Tips"),
-              ),
-            ),
-          ],
-        ),
-        Wrap(
-          alignment: WrapAlignment.spaceAround,
-          runSpacing: 10,
-          spacing: 10,
-          children: [
-            ElevatedButton(onPressed: loadGame,
-                style: buttonStyle,
-                child: Text("Select Game...")),
-            ElevatedButton(onPressed: () => edit(create: false),
-                style: buttonStyle,
-                child: Text("Play")),
-            ElevatedButton(onPressed: generateGame,
-                style: buttonStyle,
-                child: Text("Generate Game...")),
-            ElevatedButton(onPressed: showSolution,
-                style: buttonStyle,
-                child: Text(model.gameMode == GameMode.solved
-                    ? "Clear Hints"
-                    : "Show Solution")),
-            ElevatedButton(onPressed: newGame,
-                style: buttonStyle,
-                child: Text("New Game...")),
-            ElevatedButton(onPressed: () => edit(create: true),
-                style: buttonStyle,
-                child: Text("Edit Game")),
-            ElevatedButton(
-                onPressed: save, style: buttonStyle, child: Text("Save")),
-            ElevatedButton(
-                onPressed: toggleHelp, style: buttonStyle, child: Text("Help")),
-          ],
-        ),
-      ],
-    ));
+            ],
+          ),
+          Wrap(
+            alignment: WrapAlignment.spaceAround,
+            runSpacing: 10,
+            spacing: 10,
+            children: [
+              ElevatedButton(onPressed: () => loadGame(localModel),
+                  style: buttonStyle,
+                  child: Text("Select Game...")),
+              ElevatedButton(onPressed: () => edit(create: false),
+                  style: buttonStyle,
+                  child: Text("Play")),
+              ElevatedButton(onPressed: () => generateGame(localModel),
+                  style: buttonStyle,
+                  child: Text("Generate Game...")),
+              ElevatedButton(onPressed: () => showSolution(localModel),
+                  style: buttonStyle,
+                  child: Text(localModel.gameMode == GameMode.solved
+                      ? "Clear Hints"
+                      : "Show Solution")),
+              ElevatedButton(onPressed: newGame,
+                  style: buttonStyle,
+                  child: Text("New Game...")),
+              ElevatedButton(onPressed: () => edit(create: true),
+                  style: buttonStyle,
+                  child: Text("Edit Game")),
+              ElevatedButton(
+                  onPressed: save, style: buttonStyle, child: Text("Save")),
+              ElevatedButton(
+                  onPressed: toggleHelp,
+                  style: buttonStyle,
+                  child: Text("Help")),
+            ],
+          ),
+        ],
+      ));
+    });
   }
 
   @override

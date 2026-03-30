@@ -314,14 +314,18 @@ Future<String?> selectGame(
   BuildContext context, {
   String title = _defaultDialogTitle,
 }) async {
-  final selection = ValueNotifier(Games().current.name ?? "game");
+  var n = await Games().current.first;
+  final selection = ValueNotifier(n?.name ?? "game");
   final w = GameSelectorWidget(value: selection);
-  return showContentDialog(
-    title: title,
-    context,
-    content: w,
-    getValue: () => selection.value,
-  );
+  if (context.mounted) {
+    return showContentDialog(
+      title: title,
+      context,
+      content: w,
+      getValue: () => selection.value,
+    );
+  }
+  return null;
 }
 
 Future<NewGameOptions?> selectNewGameOptions(

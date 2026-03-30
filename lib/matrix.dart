@@ -68,7 +68,7 @@ class Cell {
   bool markedAsFound = false;
   int? value;
   int? trying;
-  List<int> alternatives = [];
+  Set<int> alternatives = {};
 
   @override
   String toString() => "Cell $value";
@@ -121,6 +121,7 @@ class Matrix {
   /// Fast lookup of cell placements.
   ///
   final Map<Cell, Point<int>> _placements = {};
+  final List<int> _allValues = [];
 
   ///
   /// Returns the placement of a cell in our matrix in form of
@@ -245,8 +246,8 @@ class Matrix {
   ///
   /// Generate a game matrix.
   ///
-  Matrix? generateGame({required int numberOfEmptyPlaces}) {
-    var m = generateValidMatrix();
+  Future<Matrix?> generateGame({required int numberOfEmptyPlaces}) async {
+    var m = await generateValidMatrix();
     if (m == null) {
       return null;
     }
@@ -267,21 +268,24 @@ class Matrix {
   ///
   /// Generate a new valid Sudoku Matrix.
   ///
-  Matrix? generateValidMatrix() {
+  Future<Matrix?> generateValidMatrix() async {
     if (solved) {
       return this;
     }
     if (!checkValid) {
       return null;
     }
-    return autoPlaceNewValue(col: 0, row: 0);
+    return autoPlaceNewValue();
   }
 
-  ({int row, int col})? findNextEmpty(int row, int col) {
+  ({int row, int col})? findNextEmpty() {
     var total = gridCount;
+    var row = 0;
+    var col = 0;
     while(row < total) {
       while(col < total) {
-        if (cells[row][col].value == null) {
+        var cell = cells[row][col];
+        if (cell.value == null) {
           return (row: row, col: col);
         }
         col ++;
@@ -289,24 +293,27 @@ class Matrix {
       if (col >= total) {
         row++;
         col = 0;
-      } else {
-        break;
       }
     }
     return null;
   }
 
-  Matrix? autoPlaceNewValue({Random? rand, required int col, required int row}) {
-    var result = findNextEmpty(row, col);
-    if (result == null) {
-      return this;
-    }
-    rand ??= Random.secure();
-    row = result.row;
-    col = result.col;
+  Future<Matrix?> autoPlaceNewValue({Random? rand}) async {
     if (!recalculateAlternatives()) {
       return null;
     }
+    if (!checkValid) {
+      return null;
+    }
+    var result = findNextEmpty();
+    if (result == null) {
+      return this;
+    }
+    // Give the UI a chance to repaint.
+    await Future<void>.delayed(Duration(milliseconds: 50));
+    rand ??= Random.secure();
+    var row = result.row;
+    var col = result.col;
     var avail = List.of(cells[row][col].alternatives);
     var thresholdForSolving = gridCount*gridCount/3;
     while(avail.isNotEmpty) {
@@ -320,7 +327,7 @@ class Matrix {
           return m2;
         }
       }
-      var result = m.autoPlaceNewValue(col: col, row: row);
+      var result = await m.autoPlaceNewValue();
       if (result != null) {
         return result;
       }
@@ -393,6 +400,8 @@ class Matrix {
       var rowCells = List.generate(size, (index) => Cell());
       cells.add(rowCells);
     }
+    _allValues.clear();
+    _allValues.addAll(List.generate(gridCount, (i) => i+1));
   }
 
   ///
@@ -468,16 +477,28 @@ class Matrix {
     }
     for (int i = 0; i < applicableCells.length-2; i++) {
       first = applicableCells[i];
+      if (first.value != null) {
+        continue;
+      }
       for (int j = i+1; j < applicableCells.length; j++) {
         second = applicableCells[j];
+        if (second.value != null) {
+          continue;
+        }
         for (int k = j+1; k < applicableCells.length; k++) {
           third = applicableCells[k];
+          if (third.value != null) {
+            continue;
+          }
           var shared = sharedTriples(first, second, third);
           if (shared != null) {
             for (var i = 0; i < cells.length - 1; i++) {
               final cell = cells[i];
-              if (cell != first && cell != second && cell != third) {
+              if (cell.value == null && cell != first && cell != second && cell != third) {
                 cell.alternatives.removeWhere((a) => shared.contains(a));
+                if (cell.alternatives.isEmpty) {
+                  return false;
+                }
               }
             }
           }
@@ -540,8 +561,9 @@ class Matrix {
     for (var i = 1; i <= gridCount; i++) {
       var matching = cells.where((c) => c.value == null && c.alternatives.contains(i));
       if (matching.length == 1) {
-        matching.first.alternatives.removeWhere((v) => v != i);
-        if (matching.first.alternatives.isEmpty) {
+        var a = matching.first.alternatives;
+        a.removeWhere((v) => v != i);
+        if (a.isEmpty) {
           return false;
         }
       }
@@ -685,17 +707,10 @@ class Matrix {
   }
 
   ///
-  /// Returns all values contained in a cell block 3x3.
+  /// Returns all values contained in a cell block (n X m - e.g. 3x3 for 9x9 Sudoku).
   ///
-  Iterable<int> blockValues(int row, int col) {
-    var values = <int>{};
-    blockCellsDo(row, col, (c) {
-      if (c.value != null) {
-        values.add(c.value!);
-      }
-    });
-    return values;
-  }
+  Iterable<int> blockValues(int row, int col) =>
+      blockCells(row, col).map((c) => c.value).nonNulls;
 
   ///
   /// Execute a callback [f] for each cell of our Sudoku game.
@@ -790,7 +805,7 @@ class Matrix {
   bool _calculateAlternatives(int row, int col, List<Iterable<int>> rowValues, List<Iterable<int>> colValues) {
     var cell = cells[row][col];
     if (cell.value != null) {
-      cell.alternatives = [];
+      cell.alternatives = {};
       return true;
     }
     var selected = <int>{
@@ -798,13 +813,13 @@ class Matrix {
       ...colValues[col],
       ...blockValues(row, col),
     };
-    final a = List<int>.generate(gridCount, (index) => index + 1).toSet();
+    final a = _allValues.toSet();
     a.removeAll(selected);
     if (a.isEmpty) {
       // Illegal cell detected - skip rest of calculation.
       return false;
     }
-    cell.alternatives = a.toList();
+    cell.alternatives = a;
     return true;
   }
 
@@ -916,7 +931,9 @@ class Matrix {
         return true;
       });
       if (rowColBlockResolved) {
-        recalculateAlternatives();
+        if (!recalculateAlternatives()) {
+          return false;
+        }
       }
     }
     return solvable;
@@ -933,7 +950,7 @@ class Matrix {
       cells[row][column].trying = tryNext;
       var copy = Matrix.clone(this);
       var cell = copy.cells[row][column];
-      cell.value = originalCell.alternatives[tryNext];
+      cell.value = originalCell.alternatives.toList()[tryNext];
       cell.solved = true;
       return copy;
     }
@@ -953,6 +970,9 @@ class Matrix {
         if (nAlternatives < l) {
           l = nAlternatives;
           candidate = (row: r, column: c);
+          if (l == 2) {
+            return candidate;
+          }
         }
       }
     }

@@ -8,6 +8,7 @@
 //
 // THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -16,6 +17,7 @@ import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:sudoku/matrix.dart';
 
 ///
@@ -225,7 +227,8 @@ class Games {
   }
 
   final List<Game> games = [];
-  Game current = Game(sample);
+  Stream<Game?> get current => _streamController.stream;
+  final StreamController<Game?> _streamController = BehaviorSubject.seeded(Game(sample));
 
   int get numberOfGames => games.length;
 
@@ -244,19 +247,23 @@ class Games {
   /// simple or more complex to solve games. If size is not 9, the numberOfEmptyPlaces
   /// is normalized to a Sudoko with size 9.
   ///
-  void generateGame({int numberOfEmptyPlaces = 57, String? name, int? size}) {
+  Future<void> generateGame({int numberOfEmptyPlaces = 57, String? name, int? size}) async {
+    _streamController.add(null);
+    // give the UI a chance to repaint.
     Matrix? m = Matrix.empty(size: size);
     if (size != null && size != 9) {
       numberOfEmptyPlaces = (numberOfEmptyPlaces * size * size / 81).round();
     }
-    m = m.generateGame(numberOfEmptyPlaces: numberOfEmptyPlaces);
+    m = await m.generateGame(numberOfEmptyPlaces: numberOfEmptyPlaces);
     if (m != null) {
       var g = Game(m);
       if (name != null) {
         g.name = name;
       }
       addGame(g);
-      current = g;
+      _streamController.add(g);
+    } else {
+      await selectGameNamed(games.first.name ?? "");
     }
   }
 
@@ -264,7 +271,7 @@ class Games {
     await _initializePath();
     readHistory();
     addGame(Game(sample));
-    current = games.last;
+    _streamController.add(games.last);
     return true;
   }
 
@@ -319,8 +326,8 @@ class Games {
     m.name = name;
     var game = Game(m);
     addGame(game);
-    current = game;
     game.gameMode = GameMode.creating;
+    _streamController.add(game);
   }
 
   ///
@@ -334,15 +341,15 @@ class Games {
   /// Select a game given its name and mae it the current game. A game with the given name must exist or
   /// an exception is thrown.
   ///
-  void selectGameNamed(String name) {
+  Future<void> selectGameNamed(String name) async {
     var m = games.where((g) => g.name == name).firstOrNull;
-    if (m != null && m != current) {
-      current = m;
+    if (m != null && m != await current.first) {
+      _streamController.add(m);
     }
   }
 
   void useSample() {
-    current = Game(sample);
+    _streamController.add(Game(sample));
   }
 
   void markDirty(bool value) {
