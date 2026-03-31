@@ -34,24 +34,6 @@ class NewGameOptions {
   final int gridSize;
   NewGameOptions({this.name = "New Game", this.level = 1, this.gridSize = 9});
 
-  ///
-  /// If the game should be generated, this defines the difficulty level of
-  /// the game to generate - the number of places to be left open.
-  ///
-  int get numberOfEmptyPlaces {
-    switch (level) {
-      case 1:
-        return 42;
-      case 2:
-        return 49;
-      case 3:
-        return 53;
-      case 4:
-        return 57;
-      default:
-        return 59;
-    }
-  }
 }
 
 ///

@@ -249,7 +249,7 @@ class Games {
   /// simple or more complex to solve games. If size is not 9, the numberOfEmptyPlaces
   /// is normalized to a Sudoko with size 9.
   ///
-  Future<void> generateGame({int numberOfEmptyPlaces = 57, String? name, int? size}) async {
+  Future<void> generateGame({int? level, int? numberOfEmptyPlaces, String? name, int? size}) async {
     if (_operationRunning) {
       return;
     }
@@ -257,12 +257,10 @@ class Games {
     try {
       _streamController.add(null);
       Matrix? m = Matrix.empty(size: size);
-      if (size != null && size != 9) {
-        numberOfEmptyPlaces = (numberOfEmptyPlaces * size * size / 81).round();
-      }
       // give the UI a chance to repaint.
       m = await Isolate.run<Matrix?>(() =>
-          m!.generateGame(numberOfEmptyPlaces: numberOfEmptyPlaces));
+          m!.generateGame(numberOfEmptyPlaces:
+              numberOfEmptyPlaces ??= m.numberOfEmptyPlacesForLevel(level ?? 1)));
       if (m != null) {
         var g = Game(m);
         if (name != null) {

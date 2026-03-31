@@ -167,7 +167,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   void _generateGame(NewGameOptions options) {
     games.generateGame(
-      numberOfEmptyPlaces: options.numberOfEmptyPlaces,
+      level: options.level,
       name: options.name,
       size: options.gridSize,
     );
@@ -434,7 +434,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
                                       focusNode: forCell(
                                         localModel.placementOf(c),c
                                       ),
-                                      highlighted: c.alternatives.contains(focusCell?.value) || c.value == focusCell?.value,
+                                      highlighted: options.highlightCells && (c.alternatives.contains(focusCell?.value) || c.value == focusCell?.value),
                                       showTips:
                                           options.showTips ||
                                           localModel.gameMode ==

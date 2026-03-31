@@ -85,9 +85,54 @@ class Matrix {
 
   final List<VoidCallback> _notifiers = [];
 
+  static final Map<int, Map<int, int>> _emptyPlacesPerLevelAndSize = {
+    6: {
+      1: 10,
+      2: 14,
+      3: 20,
+      4: 22,
+      5: 23,
+      6: 24
+    },
+    9: {
+      1: 41,
+      2: 49,
+      3: 53,
+      4: 57,
+      5: 59,
+      6: 60
+    },
+    12: {
+      1: 55,
+      2: 62,
+      3: 70,
+      4: 74,
+      5: 82,
+      6: 90
+    },
+    16: {
+      1: 55,
+      2: 62,
+      3: 69,
+      4: 72,
+      5: 75,
+      6: 81
+    },
+    25: {
+      1: 118,
+      2: 126,
+      3: 138,
+      4: 143,
+      5: 150,
+      6: 165
+    }
+  };
+
   void onGameChanged(VoidCallback callback) {
     _notifiers.add(callback);
   }
+
+  int numberOfEmptyPlacesForLevel(int level) => _emptyPlacesPerLevelAndSize[gridCount]?[level] ?? 57;
 
   ///
   /// Invoked, when the definition of this game has changed.
@@ -444,107 +489,52 @@ class Matrix {
   }
 
   ///
-  /// Check whether 3 given cells have the same applicable triple of alternatives.
+  /// Implements the naked tuples strategy.
   ///
-  List<int>? sharedTriples(Cell c1, Cell c2, Cell c3) {
-    var joined = <int>{};
-    joined.addAll(c1.alternatives);
-    joined.addAll(c2.alternatives);
-    joined.addAll(c3.alternatives);
-    if (joined.length != 3) {
-      return null;
-    }
-    return joined.toList();
-  }
-
-  ///
-  /// Implements the naked triples strategy.
-  ///
-  /// Tries to find three identical naked triples for the given set of cells which together
+  /// Tries to find [nSize] identical naked tuples for the given set of cells which together
   /// must conform to the rule, that every cell must have a distinct value. If such two cells can
   /// be identified, the two alternative values selectable for the two cells can be removed from
   /// the alternatives of all other cells in the given set of cells.
   ///
-  bool eliminateNakedTriples(List<Cell> cells) {
-    Cell? first;
-    Cell? second;
-    Cell? third;
-    var applicableCells = cells.where((c) => c.alternatives.length == 2 || c.alternatives.length == 3).toList();
-    if (applicableCells.length < 3) {
-      return true;
-    }
-    for (int i = 0; i < applicableCells.length-2; i++) {
-      first = applicableCells[i];
-      if (first.value != null) {
-        continue;
-      }
-      for (int j = i+1; j < applicableCells.length; j++) {
-        second = applicableCells[j];
-        if (second.value != null) {
-          continue;
-        }
-        for (int k = j+1; k < applicableCells.length; k++) {
-          third = applicableCells[k];
-          if (third.value != null) {
-            continue;
-          }
-          var shared = sharedTriples(first, second, third);
-          if (shared != null) {
-            for (var i = 0; i < cells.length - 1; i++) {
-              final cell = cells[i];
-              if (cell.value == null && cell != first && cell != second && cell != third) {
-                cell.alternatives.removeWhere((a) => shared.contains(a));
-                if (cell.alternatives.isEmpty) {
-                  return false;
+  /// The method gets a list of cells, which are valid candidates for treatment, i.e. they have
+  /// not yet an assigned value and more than one alternative solution.
+  ///
+  bool eliminateNakedTuples(List<Cell> cells, int nSize) {
+    List<Cell> found;
+    var applicableCells = cells.where((c) => c.alternatives.length > 1 && c.alternatives.length <= nSize).toList();
+    var foundSomething = true;
+    while(foundSomething && applicableCells.length > nSize) {
+      foundSomething = false;
+      for (var i = 0; i < applicableCells.length-nSize+1; i++) {
+        var candidate = applicableCells[i];
+        found = [candidate];
+        var set = candidate.alternatives.toSet();
+        for (var j = i+1; j < applicableCells.length; j++) {
+          var cell = applicableCells[j];
+          var s2 = cell.alternatives.toSet();
+          s2.addAll(set);
+          if (s2.length <= nSize) {
+            set = s2;
+            found.add(cell);
+            if (found.length == nSize) {
+              foundSomething = true;
+              for (final cell in cells) {
+                if (!found.contains(cell)) {
+                  cell.alternatives.removeWhere((a) => set.contains(a));
+                  if (cell.alternatives.isEmpty) {
+                    return false;
+                  }
                 }
               }
-            }
-          }
-        }
-      }
-    }
-    return true;
-  }
-
-  ///
-  /// Implements the naked pairs strategy.
-  ///
-  /// Tries to find two identical naked pairs for the given set of cells which together
-  /// must conform to the rule, that every cell must have a distinct value. If such two cells can
-  /// be identified, the two alternative values selectable for the two cells can be removed from
-  /// the alternatives of all other cells in the given set of cells.
-  ///
-  bool eliminateNakedPairs(List<Cell> cells) {
-    Cell? first;
-    Cell? second;
-    for (var i = 0; i < cells.length-1; i++) {
-      final cell = cells[i];
-      if (cell.alternatives.length == 2) {
-        for (int j = i+1; j < cells.length; j++) {
-          final cell2 = cells[j];
-          if (cell2.alternatives.length == 2) {
-            var compare = cell2.alternatives.toSet();
-            compare.removeAll(cell.alternatives);
-            if (compare.isEmpty) {
-              first = cell;
-              second = cell2;
               break;
             }
           }
         }
-        if (first != null && second != null) {
-          break;
-        }
-      }
-    }
-    if (first != null) {
-      for (var i = 0; i < cells.length-1; i++) {
-        final cell = cells[i];
-        if (cell.value == null && cell != first && cell != second) {
-          cell.alternatives.removeWhere((a) => first!.alternatives.contains(a));
-          if (cell.alternatives.isEmpty) {
-            return false;
+        if (found.length == nSize) {
+          for (final c in found) {
+            applicableCells.remove(c);
           }
+          break;
         }
       }
     }
@@ -555,16 +545,37 @@ class Matrix {
   /// Detect hidden singles in a house of cells and eliminate the "non-singles" from
   /// the list of alternatives.
   ///
-  bool findHiddenSingles(List<Cell> cells) {
+  void findHiddenSingles(List<Cell> cells) {
     for (var i = 1; i <= gridCount; i++) {
-      var matching = cells.where((c) => c.value == null && c.alternatives.contains(i));
+      var matching = cells.where((c) => c.alternatives.contains(i));
       if (matching.length == 1) {
-        var a = matching.first.alternatives;
-        a.removeWhere((v) => v != i);
-        if (a.isEmpty) {
-          return false;
-        }
+        var cell = matching.first;
+        cell.alternatives.clear();
+        cell.alternatives.add(i);
       }
+    }
+  }
+
+  ///
+  /// Eliminate all naked tuples in a matrix.
+  ///
+  bool eliminateAllNakedTuples(List<Cell> cells, bool breakOnError) {
+    cells = cells.where((c) => c.value == null && c.alternatives.length > 1).toList();
+    var count = gridCount;
+    if (cells.length > 6 && count > 20 && !eliminateNakedTuples(cells, 6) && breakOnError) {
+      return false;
+    }
+    if (cells.length > 5 && count > 20 && !eliminateNakedTuples(cells, 5) && breakOnError) {
+      return false;
+    }
+    if (cells.length > 4 && count > 9 && !eliminateNakedTuples(cells, 4) && breakOnError) {
+      return false;
+    }
+    if (cells.length > 3 && !eliminateNakedTuples(cells, 3) && breakOnError) {
+      return false;
+    }
+    if (cells.length >= 2 && !eliminateNakedTuples(cells, 2) && breakOnError) {
+      return false;
     }
     return true;
   }
@@ -587,29 +598,25 @@ class Matrix {
     }
     for (var i = 0; i < rowCount; i++) {
       var row = rowAt(i);
-      if (!findHiddenSingles(row) && breakOnError) {
+      if (!eliminateAllNakedTuples(row, breakOnError)) {
         return false;
       }
-      if (!eliminateNakedPairs(row) && breakOnError) {
-        return false;
-      }
-      if (!eliminateNakedTriples(row) && breakOnError) {
-        return false;
-      }
+      findHiddenSingles(row);
     }
     for (var j = 0; j < columnCount; j++) {
       var column = columnAt(j);
-      if (!findHiddenSingles(column) && breakOnError) {
+      if (!eliminateAllNakedTuples(column, breakOnError)) {
         return false;
       }
-      if (!eliminateNakedPairs(column) && breakOnError) {
-        return false;
-      }
-      if (!eliminateNakedTriples(column) && breakOnError) {
-        return false;
-      }
+      findHiddenSingles(column);
     }
-    return blocksDo((cells) => findHiddenSingles(cells) && eliminateNakedPairs(cells) && eliminateNakedTriples(cells));
+    return blocksDo((cells) {
+      if (!eliminateAllNakedTuples(cells, breakOnError)) {
+        return false;
+      }
+      findHiddenSingles(cells);
+      return true;
+    });
   }
 
   void place(List<List<int?>> init) {
@@ -865,22 +872,6 @@ class Matrix {
     return false;
   }
 
-  void cellResolved(Cell cell, int row, int column) {
-    cell.alternatives.remove(cell.value);
-    var colCells = columnAt(column);
-    for (final cell in colCells) {
-      cell.alternatives.remove(cell.value);
-    }
-    var rowCells = rowAt(column);
-    for (final cell in rowCells) {
-      cell.alternatives.remove(cell.value);
-    }
-    var cells = blockCells(row, column);
-    for (final cell in cells) {
-      cell.alternatives.remove(cell.value);
-    }
-  }
-
   ///
   /// Answers true, if the matrix is solvable at all. Before calling this method you must call recalculateAlternatives().
   ///
@@ -892,18 +883,17 @@ class Matrix {
   ///
   bool resolveDeterministicCases() {
     bool resolved = true;
-    if (!recalculateAlternatives() || !solvable) {
-      return false;
-    }
     while (resolved) {
+      if (!recalculateAlternatives() || !solvable) {
+        return false;
+      }
       resolved = false;
-      var rowColBlockResolved = false;
       cellsDo((cell, row, column) {
         if (cell.alternatives.length == 1) {
           cell.value = cell.alternatives.first;
           cell.solved = true;
+          cell.alternatives.clear();
           resolved = true;
-          cellResolved(cell, row, column);
         }
         return true;
       });
@@ -911,28 +901,20 @@ class Matrix {
         var list = rowAt(i);
         if (addLastValueToGroup(list)) {
           resolved = true;
-          rowColBlockResolved = true;
         }
       }
       for (int i = 0; i < columnCount; i++) {
         var list = columnAt(i);
         if (addLastValueToGroup(list)) {
           resolved = true;
-          rowColBlockResolved = true;
         }
       }
       blocksDo((cells) {
         if (addLastValueToGroup(cells)) {
           resolved = true;
-          rowColBlockResolved = true;
         }
         return true;
       });
-      if (rowColBlockResolved) {
-        if (!recalculateAlternatives()) {
-          return false;
-        }
-      }
     }
     return solvable;
   }
@@ -999,7 +981,11 @@ class Matrix {
     m.recalculateAlternatives();
     var nEmpty = m.emptyCells.length;
     var nAlternatives = m.allCells.fold(0, (a,c) => a+c.alternatives.length);
-    return nEmpty * 3 ~/ gridCount + (nAlternatives / 2 ~/gridCount);
+    var count = gridCount;
+    if (count > 20) {
+      count = 18;
+    }
+    return nEmpty * 3 ~/ count + (nAlternatives / 2 ~/ count);
   }
 
   Iterable<Cell> get allCells => cells.expand((l) => l);
@@ -1031,7 +1017,7 @@ class Matrix {
     return _solve(0);
   }
 
-  bool get bailedOut => _stepsToSolveGame > 100;
+  bool get bailedOut => _stepsToSolveGame > 500;
 
   ///
   /// The input filter restricting the input which can be types by the user
@@ -1054,7 +1040,7 @@ class Matrix {
     if (!resolveDeterministicCases()) {
       return null;
     }
-    if (!checkValid || !solvable) {
+    if (!checkValid) {
       return null;
     }
     if (bailedOut) {
