@@ -76,7 +76,7 @@ class _NewGameOptionsSelectorWidgetState
   }
 
   @override
-  Widget build(BuildContext context) => IntrinsicHeight(child: SizedBox(
+  Widget build(BuildContext context) => IntrinsicHeight(child: SingleChildScrollView(child: SizedBox(
     width: 400,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,6 +114,7 @@ class _NewGameOptionsSelectorWidgetState
                 RadioListTile(value: 9, title: Text("Standard 9x9")),
                 RadioListTile(value: 6, title: Text("Mini Sudoku 6x6")),
                 RadioListTile(value: 25, title: Text("Giant Sudoku 25x25")),
+                RadioListTile(value: 16, title: Text("Huge Sudoku 16x16")),
                 RadioListTile(value: 12, title: Text("Maxi Sudoku 12x12")),
               ],
             ),
@@ -138,8 +139,10 @@ class _NewGameOptionsSelectorWidgetState
                 children: [
                   RadioListTile(value: 1, title: Text("Beginner Level")),
                   RadioListTile(value: 2, title: Text("Intermediate Level")),
-                  RadioListTile(value: 3, title: Text("Expert Level")),
-                  RadioListTile(value: 4, title: Text("Killer Level")),
+                  RadioListTile(value: 3, title: Text("Heavy Level")),
+                  RadioListTile(value: 4, title: Text("Expert Level")),
+                  RadioListTile(value: 5, title: Text("Killer Level")),
+                  RadioListTile(value: 6, title: Text("Impossible")),
                 ],
               ),
             ),
@@ -147,7 +150,7 @@ class _NewGameOptionsSelectorWidgetState
         ],
       ],
     ),
-  ));
+  )));
 }
 
 ///

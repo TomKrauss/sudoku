@@ -111,20 +111,20 @@ class Matrix {
       6: 90
     },
     16: {
-      1: 55,
-      2: 62,
-      3: 69,
-      4: 72,
-      5: 75,
-      6: 81
+      1: 75,
+      2: 82,
+      3: 89,
+      4: 92,
+      5: 105,
+      6: 101
     },
     25: {
-      1: 118,
-      2: 126,
-      3: 138,
-      4: 143,
-      5: 150,
-      6: 165
+      1: 165,
+      2: 175,
+      3: 185,
+      4: 195,
+      5: 210,
+      6: 225
     }
   };
 
@@ -268,6 +268,7 @@ class Matrix {
     // give up, if we did not succeed to generate a game after more than 5 retries to short-cut the recursive algorithm.
     while(nonEmptySlots.isNotEmpty && retries < 5) {
       p = nonEmptySlots[rand.nextInt(nonEmptySlots.length)];
+      nonEmptySlots.remove(p);
       var val = m.valueAt(p.y, p.x);
       if (val == null) {
         throw Exception("Did not move to empty slot ${p.x} ${p.y}");
@@ -282,7 +283,6 @@ class Matrix {
         }
       }
       m.setValue(p.y, p.x, val);
-      nonEmptySlots.remove(p);
       retries++;
     }
     return null;
@@ -343,6 +343,11 @@ class Matrix {
     return null;
   }
 
+  ///
+  /// Part of generating a Sudoku Matrix. When a matrix can be generated and the value
+  /// returns a non null matrix object, the [emptyCellCandidates] array contains the points
+  /// in the matrix where we started to solve the matrix.
+  ///
   Matrix? autoPlaceNewValue({Random? rand}) {
     if (!recalculateAlternatives()) {
       return null;
@@ -350,11 +355,11 @@ class Matrix {
     if (!checkValid) {
       return null;
     }
+    rand ??= Random.secure();
     var result = findNextEmpty();
     if (result == null) {
       return this;
     }
-    rand ??= Random.secure();
     var row = result.row;
     var col = result.col;
     var avail = List.of(cells[row][col].alternatives);
@@ -562,11 +567,13 @@ class Matrix {
   bool eliminateAllNakedTuples(List<Cell> cells, bool breakOnError) {
     cells = cells.where((c) => c.value == null && c.alternatives.length > 1).toList();
     var count = gridCount;
-    if (cells.length > 6 && count > 20 && !eliminateNakedTuples(cells, 6) && breakOnError) {
-      return false;
-    }
-    if (cells.length > 5 && count > 20 && !eliminateNakedTuples(cells, 5) && breakOnError) {
-      return false;
+    if (count > 20) {
+      for (var i = 8; i >= 5; i--) {
+        if (cells.length > i && !eliminateNakedTuples(cells, i) &&
+            breakOnError) {
+          return false;
+        }
+      }
     }
     if (cells.length > 4 && count > 9 && !eliminateNakedTuples(cells, 4) && breakOnError) {
       return false;

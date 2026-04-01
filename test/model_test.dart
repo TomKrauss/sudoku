@@ -180,7 +180,7 @@ x x x 1 x x x x x""");
         expect(m2.valueCount, m2.gridCount * m2.gridCount - nEmpty);
       }
       for (final size in [6, 12, 16, 25]) {
-        for (final nLevel in [1, 2, 3]) {
+        for (final nLevel in [1, 2, 3, 4, 5]) {
           var m1 = Matrix.empty(size: size);
           var nEmpty = m1.numberOfEmptyPlacesForLevel(nLevel);
           var c = DateTime.now().millisecondsSinceEpoch;
