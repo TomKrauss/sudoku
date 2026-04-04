@@ -106,10 +106,10 @@ x x x 1 x x x x x""");
           "1 x x x x 3 "
           "x 1 x 5 x x "
           "5 x x x x x ");
-      expect(m.gridCount, 6);
+      expect(m.gridSize, 6);
       expect(m.blockRowBreaks, [2,4]);
       var m2 = Matrix.clone(m);
-      expect(m2.gridCount, 6);
+      expect(m2.gridSize, 6);
       expect(m2.blockRowBreaks, [2,4]);
       var mSolved = m2.solve();
       expect(mSolved, isNotNull);
@@ -172,12 +172,12 @@ x x x 1 x x x x x""");
       for (final nEmpty in [42, 52, 57, 58, 60]) {
         var m1 = Matrix.empty();
         var m2 = m1.generateGame(numberOfEmptyPlaces: nEmpty);
-        var size = m1.gridCount;
+        var size = m1.gridSize;
         expect(m2, isNotNull,
             reason: "Cannot generate ${size}x$size game with $nEmpty empty slots.");
         var m3 = Matrix.parse(m2!.debugPrint());
         expect(m3.checkValid, true);
-        expect(m2.valueCount, m2.gridCount * m2.gridCount - nEmpty);
+        expect(m2.valueCount, m2.gridSize * m2.gridSize - nEmpty);
       }
       for (final size in [6, 12, 16, 25]) {
         for (final nLevel in [1, 2, 3, 4, 5]) {

@@ -74,6 +74,21 @@ class Cell {
   String toString() => "Cell $value";
 }
 
+///
+/// The supported game difficulties when generating a game.
+///
+enum Difficulty {
+  easy(0),
+  beginner(1),
+  medium(2),
+  hard(3),
+  expert(4),
+  killer(5),
+  impossible(6);
+
+  const Difficulty(this.level);
+  final int level;
+}
 
 ///
 /// Represents one Sudoku game matrix.
@@ -87,6 +102,7 @@ class Matrix {
 
   static final Map<int, Map<int, int>> _emptyPlacesPerLevelAndSize = {
     6: {
+      0: 8,
       1: 10,
       2: 14,
       3: 20,
@@ -95,6 +111,7 @@ class Matrix {
       6: 24
     },
     9: {
+      0: 35,
       1: 41,
       2: 49,
       3: 53,
@@ -103,6 +120,7 @@ class Matrix {
       6: 60
     },
     12: {
+      0: 45,
       1: 55,
       2: 62,
       3: 70,
@@ -111,6 +129,7 @@ class Matrix {
       6: 90
     },
     16: {
+      0: 60,
       1: 75,
       2: 82,
       3: 89,
@@ -119,6 +138,7 @@ class Matrix {
       6: 101
     },
     25: {
+      0: 140,
       1: 165,
       2: 175,
       3: 185,
@@ -132,7 +152,7 @@ class Matrix {
     _notifiers.add(callback);
   }
 
-  int numberOfEmptyPlacesForLevel(int level) => _emptyPlacesPerLevelAndSize[gridCount]?[level] ?? 57;
+  int numberOfEmptyPlacesForLevel(int level) => _emptyPlacesPerLevelAndSize[gridSize]?[level] ?? (gridSize*gridSize~/3);
 
   ///
   /// Invoked, when the definition of this game has changed.
@@ -237,7 +257,7 @@ class Matrix {
   }
 
   static Matrix clone(Matrix m) {
-    var result = Matrix.empty(size: m.gridCount, columnBreaks: m.blockColumnBreaks, rowBreaks: m.blockRowBreaks);
+    var result = Matrix.empty(size: m.gridSize, columnBreaks: m.blockColumnBreaks, rowBreaks: m.blockRowBreaks);
     result.cellsDo((cell, row, column) {
       var origin = m.cells[row][column];
       cell.value = origin.value;
@@ -324,7 +344,7 @@ class Matrix {
   }
 
   ({int row, int col})? findNextEmpty() {
-    var total = gridCount;
+    var total = gridSize;
     var row = 0;
     var col = 0;
     while(row < total) {
@@ -363,7 +383,7 @@ class Matrix {
     var row = result.row;
     var col = result.col;
     var avail = List.of(cells[row][col].alternatives);
-    var thresholdForSolving = gridCount*gridCount/3;
+    var thresholdForSolving = gridSize*gridSize/3;
     while(avail.isNotEmpty) {
       var idx = rand.nextInt(avail.length);
       setValue(row, col, avail[idx]);
@@ -449,7 +469,7 @@ class Matrix {
       cells.add(rowCells);
     }
     _allValues.clear();
-    _allValues.addAll(List.generate(gridCount, (i) => i+1));
+    _allValues.addAll(List.generate(gridSize, (i) => i+1));
   }
 
   ///
@@ -551,7 +571,7 @@ class Matrix {
   /// the list of alternatives.
   ///
   void findHiddenSingles(List<Cell> cells) {
-    for (var i = 1; i <= gridCount; i++) {
+    for (var i = 1; i <= gridSize; i++) {
       var matching = cells.where((c) => c.alternatives.contains(i));
       if (matching.length == 1) {
         var cell = matching.first;
@@ -566,7 +586,7 @@ class Matrix {
   ///
   bool eliminateAllNakedTuples(List<Cell> cells, bool breakOnError) {
     cells = cells.where((c) => c.value == null && c.alternatives.length > 1).toList();
-    var count = gridCount;
+    var count = gridSize;
     if (count > 20) {
       for (var i = 8; i >= 5; i--) {
         if (cells.length > i && !eliminateNakedTuples(cells, i) &&
@@ -593,11 +613,11 @@ class Matrix {
   ///
   bool recalculateAlternatives({bool breakOnError = true}) {
     var cValues = <Iterable<int>>[];
-    for (var i = 0; i < gridCount; i++) {
+    for (var i = 0; i < gridSize; i++) {
       cValues.add(colValues(i));
     }
     var rValues = <Iterable<int>>[];
-    for (var i = 0; i < gridCount; i++) {
+    for (var i = 0; i < gridSize; i++) {
       rValues.add(rowValues(i));
     }
     if (!cellsDo((cell, r, c) => _calculateAlternatives(r, c, rValues, cValues, breakOnError))) {
@@ -677,7 +697,7 @@ class Matrix {
   final Map<int, List<Cell>> _blockCellCache = {};
 
   Iterable<Cell> blockCells(int row, int col) {
-    var result = _blockCellCache[row * gridCount + col];
+    var result = _blockCellCache[row * gridSize + col];
     if (result != null) {
       return result;
     }
@@ -689,7 +709,7 @@ class Matrix {
     for (var rIdx = 0; rIdx < blockRowBreaks.length; rIdx++) {
       if (row >= blockRowBreaks[rIdx]) {
         rowStart = blockRowBreaks[rIdx];
-        rowEnd = rIdx+1 >= blockRowBreaks.length ? gridCount : blockRowBreaks[rIdx+1];
+        rowEnd = rIdx+1 >= blockRowBreaks.length ? gridSize : blockRowBreaks[rIdx+1];
       } else {
         break;
       }
@@ -697,15 +717,15 @@ class Matrix {
     for (var cIdx = 0; cIdx < blockColumnBreaks.length; cIdx++) {
       if (col >= blockColumnBreaks[cIdx]) {
         columnStart = blockColumnBreaks[cIdx];
-        columnEnd = cIdx+1 >= blockColumnBreaks.length ? gridCount : blockColumnBreaks[cIdx+1];
+        columnEnd = cIdx+1 >= blockColumnBreaks.length ? gridSize : blockColumnBreaks[cIdx+1];
       } else {
         break;
       }
     }
-    var cacheIdx = rowStart * gridCount + columnStart;
+    var cacheIdx = rowStart * gridSize + columnStart;
     var result2 = _blockCellCache[cacheIdx];
     if (result2 != null) {
-      _blockCellCache[row*gridCount + col] = result2;
+      _blockCellCache[row*gridSize + col] = result2;
       return result2;
     }
     for (int r = rowStart; r < rowEnd; r++) {
@@ -713,7 +733,7 @@ class Matrix {
         result.add(cells[r][c]);
       }
     }
-    _blockCellCache[row*gridCount + col] = result;
+    _blockCellCache[row*gridSize + col] = result;
     _blockCellCache[cacheIdx] = result;
     return result;
   }
@@ -850,7 +870,7 @@ class Matrix {
   ///
   List<Cell> columnAt(int columnNumber) {
     if (_columns.isEmpty) {
-      for (int i = 0; i < gridCount; i++) {
+      for (int i = 0; i < gridSize; i++) {
         var list = cells.map((l) => l[i]).toList();
         _columns.add(list);
       }
@@ -969,7 +989,7 @@ class Matrix {
   ///
   /// The size of the Sudoku Grid used - typically 9.
   ///
-  int get gridCount => cells.length;
+  int get gridSize => cells.length;
 
   ///
   /// Answer true if a matrix is empty.
@@ -988,7 +1008,7 @@ class Matrix {
     m.recalculateAlternatives();
     var nEmpty = m.emptyCells.length;
     var nAlternatives = m.allCells.fold(0, (a,c) => a+c.alternatives.length);
-    var count = gridCount;
+    var count = gridSize;
     if (count > 20) {
       count = 18;
     }
@@ -1030,8 +1050,8 @@ class Matrix {
   /// The input filter restricting the input which can be types by the user
   /// into the text field of the cells.
   ///
-  RegExp get inputFilter => gridCount < 10 ? RegExp('[1-$gridCount]') : gridCount < 20 ? RegExp('(1[0-${gridCount-10}])|([1-9])') :
-    RegExp('([12][0-$gridCount])|([1-$gridCount])');
+  RegExp get inputFilter => gridSize < 10 ? RegExp('[1-$gridSize]') : gridSize < 20 ? RegExp('(1[0-${gridSize-10}])|([1-9])') :
+    RegExp('([12][0-$gridSize])|([1-$gridSize])');
 
   ///
   /// Attach a listener to all matrix cells and listen to a change of the error state of the cell.

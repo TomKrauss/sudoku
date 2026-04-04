@@ -17,7 +17,13 @@ class _GridPaperPainter extends CustomPainter {
     required this.divisions,
     required this.majorGridColumnBreaks,
     required this.majorGridRowBreaks,
+    this.getCellContents
   });
+
+  ///
+  /// An optional callback providing an icon to be displayed in the center of each grid cell painted.
+  ///
+  final String? Function(int row, int column)? getCellContents;
 
   final Color color;
   final double interval;
@@ -39,6 +45,7 @@ class _GridPaperPainter extends CustomPainter {
     final Paint linePaint = Paint()..color = color;
     linePaint.strokeCap = StrokeCap.round;
     final allDivisions = divisions;
+    var gridWidth = interval/allDivisions;
     for (int x = 0; x <= allDivisions; x ++) {
       bool isBreak = majorGridColumnBreaks.contains(x);
       linePaint.strokeWidth =
@@ -48,7 +55,7 @@ class _GridPaperPainter extends CustomPainter {
           ? 1.5
           : 0.5;
       var xPos = x*interval/allDivisions;
-      canvas.drawLine(Offset(xPos, 0.0), Offset(xPos, size.height), linePaint);
+      canvas.drawLine(Offset(xPos, 1), Offset(xPos, size.height), linePaint);
     }
     for (int y = 0; y <= allDivisions; y++) {
       bool isBreak = majorGridRowBreaks.contains(y);
@@ -59,7 +66,24 @@ class _GridPaperPainter extends CustomPainter {
           ? 1.5
           : 0.5;
       var yPos = y * size.height / allDivisions;
-      canvas.drawLine(Offset(0.0, yPos+linePaint.strokeWidth/2), Offset(size.width, yPos), linePaint);
+      canvas.drawLine(Offset(0, yPos+linePaint.strokeWidth/2), Offset(size.width, yPos), linePaint);
+    }
+    var f = getCellContents;
+    if (f != null) {
+      for (int x = 0; x < allDivisions; x ++) {
+        var xPos = x*interval/allDivisions;
+        for (int y = 0; y < allDivisions; y++) {
+          var yPos = y * size.height / allDivisions;
+          var text = f(x, y);
+          if (text != null) {
+            TextPainter textPainter = TextPainter(textDirection: TextDirection.rtl, textAlign: TextAlign.center, );
+            textPainter.text = TextSpan(text: text,
+                style: TextStyle(fontSize: gridWidth > 10 ? gridWidth/2 : gridWidth, color: Colors.grey));
+            textPainter.layout();
+            textPainter.paint(canvas, Offset(xPos+gridWidth/4,yPos + gridWidth/4));
+          }
+        }
+      }
     }
   }
 
@@ -86,8 +110,14 @@ class CustomGridPaper extends StatelessWidget {
     this.divisions = 10,
     this.majorGridColumnBreaks = const [5],
     this.majorGridRowBreaks = const [5],
+    this.getCellContents,
     this.child,
   });
+
+  ///
+  /// An optional callback providing an icon to be displayed in the center of each grid cell painted.
+  ///
+  final String? Function(int row, int column)? getCellContents;
 
   /// The color to draw the lines in the grid.
   ///
@@ -133,6 +163,7 @@ class CustomGridPaper extends StatelessWidget {
         color: color,
         interval: interval,
         divisions: divisions,
+        getCellContents: getCellContents,
         majorGridColumnBreaks: majorGridColumnBreaks,
         majorGridRowBreaks: majorGridRowBreaks,
       ),

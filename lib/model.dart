@@ -154,7 +154,7 @@ class Game {
 
   int get rowCount => matrix.rowCount;
 
-  int get gridCount => matrix.gridCount;
+  int get gridCount => matrix.gridSize;
 
   List<List<Cell>> get cells => currentNotNull.cells;
 

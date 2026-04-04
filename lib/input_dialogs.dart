@@ -8,10 +8,34 @@
 //
 // THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:sudoku/assets/board_preview_widget.dart';
+import 'package:sudoku/matrix.dart';
 import 'package:sudoku/model.dart';
 
 const _defaultDialogTitle = "Sudoku";
+
+///
+/// A selectable board size.
+///
+class BoardSize {
+  final int gridCount;
+  final String baseName;
+  BoardSize({required this.gridCount, required this.baseName});
+
+  String get printableName => "$baseName ($gridCount x $gridCount)";
+
+  static final List<BoardSize> supportedSizes = [
+    BoardSize(gridCount: 4, baseName: "Child Sudoku"),
+    BoardSize(gridCount: 6, baseName: "Mini Sudoku"),
+    BoardSize(gridCount: 9, baseName: "Standard"),
+    BoardSize(gridCount: 12, baseName: "Maxi Sudoku"),
+    BoardSize(gridCount: 16, baseName: "Number Place Challenger"),
+    BoardSize(gridCount: 25, baseName: "Giant Sudoku"),
+  ];
+}
 
 ///
 /// Options for creating a new game.
@@ -26,15 +50,18 @@ class NewGameOptions {
   /// For generated games, the difficulty level of the game
   /// to generate.
   ///
-  final int level;
+  final Difficulty difficulty;
 
   ///
   /// The number of cells the game should have.
   ///
   final int gridSize;
-  NewGameOptions({this.name = "New Game", this.level = 1, this.gridSize = 9});
+  NewGameOptions({this.name = "New Game", this.difficulty = .easy, this.gridSize = 9});
 
+  NewGameOptions copyWith({String? name, int? gridSize, Difficulty? difficulty}) =>
+        NewGameOptions(name: name ?? this.name, gridSize: gridSize ?? this.gridSize, difficulty: difficulty ?? this.difficulty);
 }
+
 
 ///
 /// A widget allowing to define a name and select a difficulty for
@@ -58,99 +85,113 @@ class _NewGameOptionsSelectorWidgetState
     extends State<NewGameOptionsSelectorWidget> {
   late final TextEditingController controller;
   int gridSize = 9;
-  int level = 0;
+  Matrix sampleMatrix = Matrix.empty();
+  Difficulty difficulty = Difficulty.easy;
 
   @override
   void initState() {
     super.initState();
-    controller = TextEditingController(text: widget.value.value.name);
-    level = widget.value.value.level;
+    var options = widget.value.value;
+    gridSize = options.gridSize;
+    controller = TextEditingController(text: options.name);
+    difficulty = options.difficulty;
+    updateSampleMatrix();
+  }
+
+  void updateSampleMatrix() {
+    sampleMatrix = Matrix.empty(size: gridSize);
+    final rand = Random();
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (rand.nextBool()) {
+          sampleMatrix.setValue(i, j, rand.nextInt(gridSize) + 1);
+        }
+      }
+    }
   }
 
   void updateGameGenerationOptions() {
     widget.value.value = NewGameOptions(
       name: controller.text,
-      level: level,
+      difficulty: difficulty,
       gridSize: gridSize,
     );
+    if (sampleMatrix.gridSize != gridSize) {
+      updateSampleMatrix();
+    }
   }
 
+  String get _difficultyName => difficulty.name;
+
   @override
-  Widget build(BuildContext context) => IntrinsicHeight(child: SingleChildScrollView(child: SizedBox(
-    width: 400,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text("Game name"),
-            SizedBox(width: 20),
-            Flexible(
-              child: TextField(
-                controller: controller,
-                onChanged: (s) {
-                  updateGameGenerationOptions();
-                },
+  Widget build(BuildContext context) {
+    var width = 400.0;
+    var max = MediaQuery.widthOf(context);
+    if (width >= max) {
+      width = max - 50;
+    }
+    return IntrinsicHeight(child: SingleChildScrollView(child: SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Name"),
+              SizedBox(width: 20),
+              Flexible(
+                child: TextField(
+                  controller: controller,
+                  onChanged: (s) {
+                    updateGameGenerationOptions();
+                  },
+                ),
               ),
-            ),
-          ],
-        ),
-        Text("Game Size"),
-        Flexible(
-          child: RadioGroup(
-            onChanged: (int? val) {
-              if (val != null) {
+            ],
+          ),
+          SizedBox(height: 20),
+          Text("Select Board Size"),
+          Center(child: Padding(padding: EdgeInsets.all(10), child: SizedBox(width: width - 80,
+              height: width - 80,
+              child: BoardPreviewWidget(matrix: sampleMatrix, interval: width - 80,)))),
+          Center(child: DropdownButton<int>(
+            value: gridSize,
+            onChanged: (int? value) {
+              if (value != null) {
                 setState(() {
-                  gridSize = val;
+                  gridSize = value;
                   updateGameGenerationOptions();
                 });
               }
             },
-            groupValue: gridSize,
-            child: Column(
-              children: [
-                RadioListTile(value: 9, title: Text("Standard 9x9")),
-                RadioListTile(value: 6, title: Text("Mini Sudoku 6x6")),
-                RadioListTile(value: 25, title: Text("Giant Sudoku 25x25")),
-                RadioListTile(value: 16, title: Text("Huge Sudoku 16x16")),
-                RadioListTile(value: 12, title: Text("Maxi Sudoku 12x12")),
-              ],
-            ),
-          ),
-        ),
-
-        if (widget.generateGame) ...[
-          SizedBox(height: 20),
-          Text("Game Difficulty"),
-          Flexible(
-            child: RadioGroup(
-              onChanged: (int? val) {
-                if (val != null) {
+            items: BoardSize.supportedSizes.map<DropdownMenuItem<int>>((size) =>
+                DropdownMenuItem(
+                  value: size.gridCount,
+                  child: Text(size.printableName),
+                )).toList(),
+          )),
+          if (widget.generateGame) ...[
+            SizedBox(height: 20),
+            Text("Difficulty: $_difficultyName"),
+            Slider(value: difficulty.level.toDouble(),
+                label: _difficultyName,
+                divisions: Difficulty.values.length,
+                min: Difficulty.easy.level.toDouble(),
+                max: Difficulty.impossible.level.toDouble(),
+                onChanged: (val) {
                   setState(() {
-                    level = val;
+                    difficulty = Difficulty.values[val.toInt()];
                     updateGameGenerationOptions();
                   });
-                }
-              },
-              groupValue: level,
-              child: Column(
-                children: [
-                  RadioListTile(value: 1, title: Text("Beginner Level")),
-                  RadioListTile(value: 2, title: Text("Intermediate Level")),
-                  RadioListTile(value: 3, title: Text("Heavy Level")),
-                  RadioListTile(value: 4, title: Text("Expert Level")),
-                  RadioListTile(value: 5, title: Text("Killer Level")),
-                  RadioListTile(value: 6, title: Text("Impossible")),
-                ],
-              ),
-            ),
-          ),
+                })
+          ],
         ],
-      ],
-    ),
-  )));
+      ),
+    )));
+  }
+
 }
 
 ///
@@ -316,9 +357,10 @@ Future<String?> selectGame(
 Future<NewGameOptions?> selectNewGameOptions(
   BuildContext context, {
   String title = _defaultDialogTitle,
+      required NewGameOptions options,
   required bool generateGame
 }) async {
-  final selection = ValueNotifier(NewGameOptions());
+  final selection = ValueNotifier(options);
   final w = NewGameOptionsSelectorWidget(value: selection, generateGame: generateGame,);
   if (await showContentDialog(
         title: title,

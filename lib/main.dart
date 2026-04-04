@@ -33,6 +33,7 @@ class BoardOptions {
   /// cell value should be highlighted.
   ///
   bool highlightCells = false;
+
 }
 
 ///
@@ -75,6 +76,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
   Game? model;
   Cell? focusCell;
   bool _helpPage = false;
+  ///
+  /// The options most recently selected, when generating new games.
+  ///
+  NewGameOptions? _newGameOptions;
+
 
   @override
   void initState() {
@@ -153,13 +159,24 @@ class _SudokuBoardState extends State<SudokuBoard> {
   }
 
   ///
+  /// Returns the default options to use, when generating / creating a new game.
+  ///
+  NewGameOptions get defaultOptions {
+    var useOptions = _newGameOptions ?? NewGameOptions();
+    useOptions = useOptions.copyWith(name: "Game #${games.games.length + 1}");
+    return useOptions;
+  }
+
+  ///
   /// Create a new empty game, where the user can type in the numbers by herself.
   ///
   Future<void> newGame() async {
-    var options = await selectNewGameOptions(context, generateGame: false);
+    var useOptions = defaultOptions;
+    var options = await selectNewGameOptions(context, title: "Create new empty Game", options: useOptions, generateGame: false);
     if (options == null) {
       return;
     }
+    _newGameOptions = options;
     setState(() {
       games.newGame(name: options.name, size: options.gridSize);
     });
@@ -167,7 +184,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   void _generateGame(NewGameOptions options) {
     games.generateGame(
-      level: options.level,
+      level: options.difficulty.level,
       name: options.name,
       size: options.gridSize,
     );
@@ -177,10 +194,12 @@ class _SudokuBoardState extends State<SudokuBoard> {
   /// Create a new empty game and generate the game with options to select before .
   ///
   Future<void> generateGame(Game model) async {
-    var options = await selectNewGameOptions(context, generateGame: true);
+    var useOptions = defaultOptions;
+    var options = await selectNewGameOptions(context, title: "Generate Game", options: useOptions, generateGame: true);
     if (options == null) {
       return;
     }
+    _newGameOptions = options;
     _generateGame(options);
   }
 
