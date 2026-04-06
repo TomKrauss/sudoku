@@ -54,7 +54,7 @@ class SudokuApplication extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'Sudoku Solver',
     debugShowCheckedModeBanner: false,
-    home: const SudokuBoard(title: 'Edit a Sudoku and solve it'),
+    home: const SudokuBoard(title: 'Sudoku'),
   );
 }
 
@@ -95,9 +95,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
     });
   }
 
+  bool get creating => model?.gameMode == GameMode.creating;
+
   bool get editing =>
-      model?.gameMode == GameMode.playing ||
-      model?.gameMode == GameMode.creating;
+      model?.gameMode == GameMode.playing || creating;
+
   bool get playing => model?.gameMode == GameMode.playing;
   bool get creatingGame => model?.gameMode == GameMode.creating;
 
@@ -131,8 +133,9 @@ class _SudokuBoardState extends State<SudokuBoard> {
   ///
   /// Load a game from the list of games available.
   ///
-  Future<void> loadGame(Game model) async {
-    if (model.dirty) {
+  Future<void> loadGame(Game? model) async {
+    _pop();
+    if (model?.dirty == true) {
       var result = await showAlertDialog(
         context,
         message: "Do you want to save the current game?",
@@ -193,8 +196,9 @@ class _SudokuBoardState extends State<SudokuBoard> {
   ///
   /// Create a new empty game and generate the game with options to select before .
   ///
-  Future<void> generateGame(Game model) async {
+  Future<void> generateGame() async {
     var useOptions = defaultOptions;
+    _pop();
     var options = await selectNewGameOptions(context, title: "Generate Game", options: useOptions, generateGame: true);
     if (options == null) {
       return;
@@ -204,11 +208,19 @@ class _SudokuBoardState extends State<SudokuBoard> {
   }
 
   ///
+  /// Pop the end drawer off the screen.
+  ///
+  void _pop() {
+    Navigator.of(context).maybePop();
+  }
+
+  ///
   /// Start or stop editing the game.
   /// If [create] is true, this is done to define a game manually, if it
   /// is false, we start to solve the Sudoku manually.
   ///
   void edit({bool create = false}) {
+    _pop();
     setState(() {
       model?.gameMode = create ? GameMode.creating : GameMode.playing;
     });
@@ -219,6 +231,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   /// Save the list of current games known
   ///
   void save() {
+    _pop();
     games.save();
   }
 
@@ -226,6 +239,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   /// Display the help page or hide it.
   ///
   void toggleHelp() {
+    _pop();
     setState(() {
       _helpPage = !_helpPage;
     });
@@ -234,7 +248,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
   ///
   /// Calculate the solution and show the result.
   ///
-  Future<void> showSolution(Game model) async {
+  Future<void> showSolution(Game? model) async {
+    if (model == null) {
+      return;
+    }
+    _pop();
     if (model.gameMode == GameMode.solved) {
       model.gameMode = GameMode.playing;
     } else {
@@ -359,7 +377,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   Widget get contentArea {
     var width = (MediaQuery.widthOf(context) - 50);
-    var height = (MediaQuery.heightOf(context) - 300);
+    var height = (MediaQuery.heightOf(context) - 130);
     return StreamBuilder(
       stream: games.current,
       builder: (context, snapshot) {
@@ -417,8 +435,9 @@ class _SudokuBoardState extends State<SudokuBoard> {
                     divisions: localModel.gridCount,
                     majorGridColumnBreaks: matrix?.blockColumnBreaks ?? [3, 6],
                     majorGridRowBreaks: matrix?.blockRowBreaks ?? [3, 6],
+
                     color: (!options.showTips || localModel.current?.solvable == true)
-                        ? colorScheme.primary
+                        ? (playing ? colorScheme.primary : Colors.grey.shade300)
                         : colorScheme.error,
                     interval: localModel.gridCount * cellSize,
                     child: Column(
@@ -483,101 +502,91 @@ class _SudokuBoardState extends State<SudokuBoard> {
                       ? 'Playing'
                       : editing
                       ? 'Editing'
-                      : 'Selected'} game: ${localModel.name}, difficulty level ${localModel.difficultyLevel}",
-                  style: Theme.of(context).textTheme.bodySmall,
+                      : 'Selected'} '${localModel.name}'. Difficulty level ${localModel.difficultyLevel}",
                 ),
-              ),
-              Divider(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: CheckboxListTile(
-                      onChanged: (v) {
-                        setState(() {
-                          options.showTips = v == true;
-                        });
-                        onCurrentGameChanged();
-                      },
-                      value: options.showTips,
-                      title: Text("Show Tips"),
-                    ),
-                  ),
-                  Flexible(
-                    child: CheckboxListTile(
-                      onChanged: (v) {
-                        setState(() {
-                          options.highlightCells = v == true;
-                        });
-                        onCurrentGameChanged();
-                      },
-                      value: options.highlightCells,
-                      title: Text("Highlight Cells"),
-                    ),
-                  ),
-                ],
-              ),
-              Wrap(
-                alignment: WrapAlignment.spaceAround,
-                runSpacing: 10,
-                spacing: 10,
-                children: [
-                  ElevatedButton(
-                    onPressed: () => loadGame(localModel),
-                    style: buttonStyle,
-                    child: Text("Select Game..."),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => edit(create: false),
-                    style: buttonStyle,
-                    child: Text("Play"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => generateGame(localModel),
-                    style: buttonStyle,
-                    child: Text("Generate Game..."),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => showSolution(localModel),
-                    style: buttonStyle,
-                    child: Text(
-                      localModel.gameMode == GameMode.solved
-                          ? "Clear Hints"
-                          : "Show Solution",
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: newGame,
-                    style: buttonStyle,
-                    child: Text("New Game..."),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => edit(create: true),
-                    style: buttonStyle,
-                    child: Text("Edit Game"),
-                  ),
-                  ElevatedButton(
-                    onPressed: save,
-                    style: buttonStyle,
-                    child: Text("Save"),
-                  ),
-                  ElevatedButton(
-                    onPressed: toggleHelp,
-                    style: buttonStyle,
-                    child: Text("Help"),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
+              )
+        ]));
       },
     );
   }
 
+  Widget get drawer => Drawer(
+      width: 200,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          ElevatedButton(
+            onPressed: () => loadGame(model),
+            style: buttonStyle,
+            child: Text("Select Game..."),
+          ),
+          ElevatedButton(
+            onPressed: () => edit(create: !creating),
+            style: buttonStyle,
+            child: Text(creating ? "Play" : "Edit"),
+          ),
+          ElevatedButton(
+            onPressed: generateGame,
+            style: buttonStyle,
+            child: Text("Generate Game..."),
+          ),
+          ElevatedButton(
+            onPressed: newGame,
+            style: buttonStyle,
+            child: Text("New Game..."),
+          ),
+          ElevatedButton(
+            onPressed: save,
+            style: buttonStyle,
+            child: Text("Save"),
+          ),
+          Divider(),
+          ElevatedButton(
+            onPressed: toggleHelp,
+            style: buttonStyle,
+            child: Text(_helpPage ? "Back to Game" : "Help"),
+          ),
+          ElevatedButton(
+            onPressed: () => showSolution(model),
+            style: buttonStyle,
+            child: Text(
+              model?.gameMode == GameMode.solved
+                  ? "Clear Solution Hints"
+                  : "Show Solution",
+            ),
+          ),
+          Flexible(
+            child: CheckboxListTile(
+              onChanged: (v) {
+                setState(() {
+                  options.showTips = v == true;
+                });
+                onCurrentGameChanged();
+              },
+              value: options.showTips,
+              title: Text("Show Tips"),
+            ),
+          ),
+          Flexible(
+            child: CheckboxListTile(
+              onChanged: (v) {
+                setState(() {
+                  options.highlightCells = v == true;
+                });
+                onCurrentGameChanged();
+              },
+              value: options.highlightCells,
+              title: Text("Highlight Cells"),
+            ),
+          ),
+
+        ],));
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(widget.title)),
+    endDrawer: drawer,
     body: _helpPage
         ? helpArea
         : contentArea

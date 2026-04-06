@@ -229,7 +229,6 @@ class _GameSelectorWidgetState extends State<GameSelectorWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text("Select Game to load"),
         Flexible(
           child: ListView(
             children: games.games
@@ -338,7 +337,7 @@ Future<String?> showAlertDialog(
 ///
 Future<String?> selectGame(
   BuildContext context, {
-  String title = _defaultDialogTitle,
+  String title = "Select a Sudoku to play",
 }) async {
   var n = await Games().current.first;
   final selection = ValueNotifier(n?.name ?? "game");

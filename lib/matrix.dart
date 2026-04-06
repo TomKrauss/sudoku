@@ -1109,9 +1109,7 @@ class Matrix {
     c.solved = false;
     c.given = creatingGame && newValue != null;
     dirty = true;
-    if (newValue != null) {
-      checkValid;
-    }
+    checkValid;
     _gameChanged();
   }
 
