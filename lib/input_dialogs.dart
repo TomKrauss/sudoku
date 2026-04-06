@@ -125,11 +125,12 @@ class _NewGameOptionsSelectorWidgetState
 
   @override
   Widget build(BuildContext context) {
-    var width = 400.0;
+    var width = 300.0;
     var max = MediaQuery.widthOf(context);
     if (width >= max) {
-      width = max - 50;
+      width = max - 20;
     }
+    var previewSize = width - 100;
     return IntrinsicHeight(child: SingleChildScrollView(child: SizedBox(
       width: width,
       child: Column(
@@ -153,9 +154,9 @@ class _NewGameOptionsSelectorWidgetState
           ),
           SizedBox(height: 20),
           Text("Select Board Size"),
-          Center(child: Padding(padding: EdgeInsets.all(10), child: SizedBox(width: width - 80,
-              height: width - 80,
-              child: BoardPreviewWidget(matrix: sampleMatrix, interval: width - 80,)))),
+          Center(child: Padding(padding: EdgeInsets.all(10), child: SizedBox(width: previewSize,
+              height: previewSize,
+              child: BoardPreviewWidget(matrix: sampleMatrix, interval: previewSize,)))),
           Center(child: DropdownButton<int>(
             value: gridSize,
             onChanged: (int? value) {

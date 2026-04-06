@@ -134,8 +134,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
   /// Load a game from the list of games available.
   ///
   Future<void> loadGame(Game? model) async {
-    _pop();
-    if (model?.dirty == true) {
+    await _pop();
+    if (model?.dirty == true && mounted) {
       var result = await showAlertDialog(
         context,
         message: "Do you want to save the current game?",
@@ -174,7 +174,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
   /// Create a new empty game, where the user can type in the numbers by herself.
   ///
   Future<void> newGame() async {
+    await _pop();
     var useOptions = defaultOptions;
+    if (!mounted) {
+      return;
+    }
     var options = await selectNewGameOptions(context, title: "Create new empty Game", options: useOptions, generateGame: false);
     if (options == null) {
       return;
@@ -197,8 +201,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
   /// Create a new empty game and generate the game with options to select before .
   ///
   Future<void> generateGame() async {
+    await _pop();
+    if (!mounted) {
+      return;
+    }
     var useOptions = defaultOptions;
-    _pop();
     var options = await selectNewGameOptions(context, title: "Generate Game", options: useOptions, generateGame: true);
     if (options == null) {
       return;
@@ -210,8 +217,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
   ///
   /// Pop the end drawer off the screen.
   ///
-  void _pop() {
-    Navigator.of(context).maybePop();
+  Future<void> _pop() async {
+    await Navigator.of(context).maybePop();
   }
 
   ///
@@ -252,7 +259,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
     if (model == null) {
       return;
     }
-    _pop();
+    await _pop();
     if (model.gameMode == GameMode.solved) {
       model.gameMode = GameMode.playing;
     } else {
