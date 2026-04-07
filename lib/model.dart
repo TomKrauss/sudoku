@@ -177,7 +177,14 @@ class Game {
       current?.isCellEditable(x, y, gameMode == GameMode.creating) ?? false;
 
   void editCellValue(Cell c, String? s) {
-    currentNotNull.editCellValue(c, s, gameMode == GameMode.creating);
+    var creating = gameMode == GameMode.creating;
+    var matrix = currentNotNull;
+    matrix.editCellValue(c, s, creating);
+    if (creating && matrix != _playingMatrix && _playingMatrix != null) {
+      var p = matrix.placementOf(c);
+      var c2 = _playingMatrix!.cells[p.y][p.x];
+      _playingMatrix!.editCellValue(c2, s, true);
+    }
   }
 
   Point<int> placementOf(Cell cell) => currentNotNull.placementOf(cell);

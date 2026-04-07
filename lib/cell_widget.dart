@@ -116,7 +116,7 @@ class CellWidgetState extends State<CellWidget> {
         .map((text) => Text(text, style: TextStyle(fontSize: fontSize/2)))
         .toList(),
   ))
-      : cell.falseGuess != null ? falseGuessWidget : Text(
+      : showTips && cell.falseGuess != null ? falseGuessWidget : Text(
     "${cell.value ?? ''}",
     style: textStyle,
   );

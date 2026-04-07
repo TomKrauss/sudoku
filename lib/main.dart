@@ -411,9 +411,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
         model = localModel;
         var cellSize = (height > width ? width : height) / localModel.gridCount;
         var matrix = localModel.current;
-        matrix?.onCellErrorStateChanged = (c) {
+        void f(c) {
           setState(() {});
-        };
+        }
+        matrix?.onCellErrorStateChanged = f;
+        matrix?.onChanged = f;
         var filter = localModel.inputFilter;
         var colorScheme = Theme.of(context).colorScheme;
         return SingleChildScrollView(

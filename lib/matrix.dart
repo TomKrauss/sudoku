@@ -996,6 +996,8 @@ class Matrix {
   ///
   bool get isEmpty => !cells.any((r) => r.any((c) => c.value != null));
 
+  int? _difficultyLevel;
+
   ///
   /// Return a number identifying the difficulty to solve this matrix. This is currently
   /// calculated based on the number of empty cells compared to the grid count and on the
@@ -1003,6 +1005,10 @@ class Matrix {
   /// count.
   ///
   int get difficultyLevel {
+    var level = _difficultyLevel;
+    if (level != null) {
+      return level;
+    }
     var m = Matrix.clone(this);
     m.clearGuesses();
     m.recalculateAlternatives();
@@ -1012,7 +1018,9 @@ class Matrix {
     if (count > 20) {
       count = 18;
     }
-    return nEmpty * 3 ~/ count + (nAlternatives / 2 ~/ count);
+    level = nEmpty * 3 ~/ count + (nAlternatives / 2 ~/ count);
+    _difficultyLevel = level;
+    return level;
   }
 
   Iterable<Cell> get allCells => cells.expand((l) => l);
@@ -1060,6 +1068,8 @@ class Matrix {
     cellsDo((c, _, _) { c.onErrorStateChanged = () => onCellErrorStateChanged(c); return true; });
   }
 
+  void Function(String aspect)? onChanged;
+
   ///
   /// Solve a Sudoku game using back-tracking. Pretty trivial algorithm with few optimizations.
   ///
@@ -1097,6 +1107,16 @@ class Matrix {
   }
 
   ///
+  /// Callback invoked for various changes affecting the UI.
+  ///
+  void _changed(String aspect) {
+    var f = onChanged;
+    if (f != null) {
+      f(aspect);
+    }
+  }
+
+  ///
   /// Use this method to update the number of a Sudoku cell, when the user edits the Sudoku matrix.
   /// If [creatingGame] is true, the cell is edited of part of manually creating a new game.
   ///
@@ -1110,6 +1130,14 @@ class Matrix {
     c.given = creatingGame && newValue != null;
     dirty = true;
     checkValid;
+    if (creatingGame) {
+      var l = _difficultyLevel;
+      _difficultyLevel = null;
+      var l2 = difficultyLevel;
+      if (l2 != l) {
+        _changed("difficulty");
+      }
+    }
     _gameChanged();
   }
 
