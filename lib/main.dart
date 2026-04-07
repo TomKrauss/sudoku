@@ -9,7 +9,6 @@
 // THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -70,7 +69,7 @@ class SudokuBoard extends StatefulWidget {
 }
 
 class _SudokuBoardState extends State<SudokuBoard> {
-  final Map<Point<int>, FocusNode> focusNodes = {};
+  final Map<CellPosition, FocusNode> focusNodes = {};
   BoardOptions options = BoardOptions();
   final games = Games();
   Game? model;
@@ -115,7 +114,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   ///
   /// Returns the focus node for a given cell in a game
   ///
-  FocusNode forCell(Point<int> cell, [Cell? c]) =>
+  FocusNode forCell(CellPosition cell, [Cell? c]) =>
       focusNodes.putIfAbsent(cell, () {
         var result = FocusNode();
         result.addListener(() {
@@ -287,13 +286,13 @@ class _SudokuBoardState extends State<SudokuBoard> {
     }
   }
 
-  Point<int> wrapPoint(Point<int> p) {
+  CellPosition wrapCellPosition(CellPosition p) {
     final rowLength = model?.columnCount;
     if (rowLength == null) {
       return p;
     }
-    var newX = p.x;
-    var newY = p.y;
+    var newX = p.column;
+    var newY = p.row;
     while (newX < 0) {
       newX += rowLength;
       newY--;
@@ -316,7 +315,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
         newX = 0;
       }
     }
-    return Point(newX, newY);
+    return CellPosition(column: newX, row: newY);
   }
 
   ///
@@ -326,7 +325,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       for (final entry in focusNodes.entries) {
         var p = entry.key;
-        if (model?.isCellEditable(p.x, p.y) == true) {
+        if (model?.isCellEditable(p) == true) {
           entry.value.requestFocus();
           return;
         }
@@ -342,10 +341,10 @@ class _SudokuBoardState extends State<SudokuBoard> {
     for (final entry in focusNodes.entries) {
       if (entry.value.hasFocus) {
         var p = entry.key;
-        p = wrapPoint(Point(p.x + delta, p.y));
+        p = wrapCellPosition(CellPosition(column: p.column + delta, row: p.row));
         var originalPoint = p;
-        while (model?.isCellEditable(p.x, p.y) == false) {
-          p = wrapPoint(Point(p.x + delta, p.y));
+        while (model?.isCellEditable(p) == false) {
+          p = wrapCellPosition(CellPosition(column: p.column + delta, row: p.row));
           if (p == originalPoint) {
             return;
           }

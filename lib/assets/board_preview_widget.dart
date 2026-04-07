@@ -26,7 +26,7 @@ class BoardPreviewWidget extends StatelessWidget {
           majorGridRowBreaks: matrix.blockRowBreaks,
           interval: interval,
           getCellContents: (x, y) {
-            var v = matrix.cells[y][x].value;
+            var v = matrix.getCell(CellPosition(row: y, column: x)).value;
             if (v != null) {
               return "$v";
             }

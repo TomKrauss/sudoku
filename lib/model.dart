@@ -12,7 +12,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
@@ -173,8 +172,8 @@ class Game {
   ///
   TextInputFormatter get inputFilter => SudokuInputFormatter(maxNumber: gridCount);
 
-  bool isCellEditable(int x, int y) =>
-      current?.isCellEditable(x, y, gameMode == GameMode.creating) ?? false;
+  bool isCellEditable(CellPosition p) =>
+      current?.isCellEditable(p, gameMode == GameMode.creating) ?? false;
 
   void editCellValue(Cell c, String? s) {
     var creating = gameMode == GameMode.creating;
@@ -182,12 +181,12 @@ class Game {
     matrix.editCellValue(c, s, creating);
     if (creating && matrix != _playingMatrix && _playingMatrix != null) {
       var p = matrix.placementOf(c);
-      var c2 = _playingMatrix!.cells[p.y][p.x];
+      var c2 = _playingMatrix!.getCell(p);
       _playingMatrix!.editCellValue(c2, s, true);
     }
   }
 
-  Point<int> placementOf(Cell cell) => currentNotNull.placementOf(cell);
+  CellPosition placementOf(Cell cell) => currentNotNull.placementOf(cell);
 
   void toggleCellFoundMarker(Cell cell) {
     if (gameMode == GameMode.playing) {

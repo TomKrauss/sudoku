@@ -15,9 +15,37 @@ import 'dart:ui';
 import 'package:sudoku/model.dart';
 
 ///
+/// Represents a position of a cell in the matrix.
+///
+class CellPosition {
+  ///
+  /// The 0-based row
+  ///
+  final int row;
+  ///
+  /// The 0-based column
+  ///
+  final int column;
+
+  CellPosition({this.row = 0, this.column = 0});
+
+  @override
+  bool operator ==(Object other) => other is CellPosition && row == other.row && column == other.column;
+
+  @override
+  int get hashCode => row * 119 + column;
+}
+
+///
 /// Represents one cell in the Sudoko Matrix.
 ///
 class Cell {
+  ///
+  /// The position of the cell in the matrix.
+  ///
+  final CellPosition position;
+  Cell({required this.position});
+
   ///
   /// Callback, which can be attached to listen to changes in the error state of this cell.
   ///
@@ -182,32 +210,12 @@ class Matrix {
   static int _stepsToSolveGame = 0;
   bool dirty = false;
 
-  ///
-  /// Fast lookup of cell placements.
-  ///
-  final Map<Cell, Point<int>> _placements = {};
   final List<int> _allValues = [];
 
   ///
-  /// Returns the placement of a cell in our matrix in form of
-  /// a point with y being the row and x being the column.
+  /// Returns the placement of a cell.
   ///
-  Point<int> placementOf(Cell cell) {
-    var result = _placements[cell];
-    if (result == null) {
-      for (var i = 0; i < cells.length; i++) {
-        var row = cells[i];
-        for (var j = 0; j < row.length; j++) {
-          var p = Point(j, i);
-          _placements[row[j]] = p;
-          if (cell == row[j]) {
-            result = p;
-          }
-        }
-      }
-    }
-    return result ?? Point(-1,-1);
-  }
+  CellPosition placementOf(Cell cell) => cell.position;
 
   int get rowCount => cells.length;
 
@@ -258,8 +266,8 @@ class Matrix {
 
   static Matrix clone(Matrix m) {
     var result = Matrix.empty(size: m.gridSize, columnBreaks: m.blockColumnBreaks, rowBreaks: m.blockRowBreaks);
-    result.cellsDo((cell, row, column) {
-      var origin = m.cells[row][column];
+    result.cellsDo((cell) {
+      var origin = m.getCell(cell.position);
       cell.value = origin.value;
       cell.solved = origin.solved;
       cell.given = origin.given;
@@ -271,16 +279,16 @@ class Matrix {
   ///
   /// Eliminate values in the matrix using back-tracking
   ///
-  Matrix? tryToEliminateValue(Matrix m, Matrix originalMatrix, Random rand, int numberOfEmptyPlaces, Point<int> p) {
+  Matrix? tryToEliminateValue(Matrix m, Matrix originalMatrix, Random rand, int numberOfEmptyPlaces, CellPosition p) {
     if (numberOfEmptyPlaces <= 0) {
       return m;
     }
     numberOfEmptyPlaces--;
     m = Matrix.clone(m);
-    var nonEmptySlots = <Point<int>>[];
-    m.cellsDo((cell, row, column) {
+    var nonEmptySlots = <CellPosition>[];
+    m.cellsDo((cell) {
       if (cell.value != null) {
-        nonEmptySlots.add(Point(column, row));
+        nonEmptySlots.add(cell.position);
       }
       return true;
     });
@@ -289,11 +297,11 @@ class Matrix {
     while(nonEmptySlots.isNotEmpty && retries < 5) {
       p = nonEmptySlots[rand.nextInt(nonEmptySlots.length)];
       nonEmptySlots.remove(p);
-      var val = m.valueAt(p.y, p.x);
+      var val = m.valueAt(p.row, p.column);
       if (val == null) {
-        throw Exception("Did not move to empty slot ${p.x} ${p.y}");
+        throw Exception("Did not move to empty slot ${p.column} ${p.row}");
       }
-      m.setValue(p.y, p.x, null);
+      m.setValue(p, null);
       var tester = Matrix.clone(m);
       var solved = tester.solve();
       if (solved == originalMatrix) {
@@ -302,7 +310,7 @@ class Matrix {
           return result;
         }
       }
-      m.setValue(p.y, p.x, val);
+      m.setValue(p, val);
       retries++;
     }
     return null;
@@ -318,11 +326,11 @@ class Matrix {
     }
     var originalMatrix = Matrix.clone(m);
     var rand = Random.secure();
-    m = tryToEliminateValue(m, originalMatrix, rand, numberOfEmptyPlaces, Point<int>(0,0));
+    m = tryToEliminateValue(m, originalMatrix, rand, numberOfEmptyPlaces, CellPosition());
     if (m == null) {
       return null;
     }
-    m.cellsDo((cell, _, _) {
+    m.cellsDo((cell) {
       cell.given = cell.value != null;
       cell.solved = false;
       return true;
@@ -386,7 +394,7 @@ class Matrix {
     var thresholdForSolving = gridSize*gridSize/3;
     while(avail.isNotEmpty) {
       var idx = rand.nextInt(avail.length);
-      setValue(row, col, avail[idx]);
+      setValue(CellPosition(row: row, column: col), avail[idx]);
       var m = Matrix.clone(this);
       int nValues = valueCount;
       if (nValues > thresholdForSolving) {
@@ -441,8 +449,8 @@ class Matrix {
   /// Mark a cell which was solved by the user the wrong way to mark it in the UI.
   ///
   void markFalselyManualSolvedCells(Matrix mWithManualSolution) {
-    cellsDo((cell, row, col) {
-      Cell other = mWithManualSolution.cells[row][col];
+    cellsDo((cell) {
+      Cell other = mWithManualSolution.getCell(cell.position);
       if (!other.given && other.value != null && other.value != cell.value) {
         cell.falseGuess = other.value;
       }
@@ -465,7 +473,7 @@ class Matrix {
     blockRowBreaks.clear();
     blockRowBreaks.addAll(rowBreaks);
     for (var row = 0; row < size; row++) {
-      var rowCells = List.generate(size, (index) => Cell());
+      var rowCells = List.generate(size, (index) => Cell(position: CellPosition(row: row, column: index)));
       cells.add(rowCells);
     }
     _allValues.clear();
@@ -620,7 +628,7 @@ class Matrix {
     for (var i = 0; i < gridSize; i++) {
       rValues.add(rowValues(i));
     }
-    if (!cellsDo((cell, r, c) => _calculateAlternatives(r, c, rValues, cValues, breakOnError))) {
+    if (!cellsDo((cell) => _calculateAlternatives(cell.position.row, cell.position.column, rValues, cValues, breakOnError))) {
       return false;
     }
     for (var i = 0; i < rowCount; i++) {
@@ -647,8 +655,9 @@ class Matrix {
   }
 
   void place(List<List<int?>> init) {
-    cellsDo((cell, r, c) {
-      setValue(r, c, init[r][c]);
+    cellsDo((cell) {
+      var p = cell.position;
+      setValue(p, init[p.row][p.column]);
       return true;
     });
     recalculateAlternatives();
@@ -659,8 +668,8 @@ class Matrix {
   ///
   /// Assign [val] to the cell in [row] and [col].
   ///
-  void setValue(int row, int col, int? val) {
-    cells[row][col].value = val;
+  void setValue(CellPosition p, int? val) {
+    cells[p.row][p.column].value = val;
   }
 
   Map<String, dynamic> asJson() => {
@@ -671,7 +680,7 @@ class Matrix {
   };
 
   void clearGuesses() {
-    cellsDo((cell, r, c) {
+    cellsDo((cell) {
       if (cell.solved) {
         cell.value = null;
         cell.solved = false;
@@ -748,10 +757,10 @@ class Matrix {
   /// Execute a callback [f] for each cell of our Sudoku game.
   /// If the callback returns false, execution completes.
   ///
-  bool cellsDo(bool Function(Cell cell, int row, int column) f) {
+  bool cellsDo(bool Function(Cell cell) f) {
     for (int r = 0; r < cells.length; r++) {
       for (int c = 0; c < cells[r].length; c++) {
-        if (!f(cells[r][c], r, c)) {
+        if (!f(cells[r][c])) {
           return false;
         }
       }
@@ -761,7 +770,7 @@ class Matrix {
 
   bool get solved {
     var solved = true;
-    cellsDo((cell, r, c) {
+    cellsDo((cell) {
       if (cell.value == null) {
         solved = false;
         return false;
@@ -786,7 +795,7 @@ class Matrix {
   }
 
   bool get checkValid {
-    cellsDo((cell, r, c) {
+    cellsDo((cell) {
       cell.hasError = false;
       return true;
     });
@@ -861,7 +870,7 @@ class Matrix {
   List<Cell> rowAt(int rowNumber) => cells[rowNumber];
 
   ///
-  /// For Fast access of the grid column cells.
+  /// For fast access of the grid column cells.
   ///
   final List<List<Cell>> _columns = [];
 
@@ -915,7 +924,7 @@ class Matrix {
         return false;
       }
       resolved = false;
-      cellsDo((cell, row, column) {
+      cellsDo((cell) {
         if (cell.alternatives.length == 1) {
           cell.value = cell.alternatives.first;
           cell.solved = true;
@@ -946,17 +955,17 @@ class Matrix {
     return solvable;
   }
 
-  Matrix? tryNextAlternative({required int row, required int column}) {
-    var originalCell = cells[row][column];
+  Matrix? tryNextAlternative({required CellPosition position}) {
+    var originalCell = getCell(position);
     var tryNext = originalCell.trying;
     if (originalCell.alternatives.isEmpty) {
       return null;
     }
     if (tryNext == null || tryNext < originalCell.alternatives.length - 1) {
       tryNext = tryNext == null ? 0 : tryNext + 1;
-      cells[row][column].trying = tryNext;
+      getCell(position).trying = tryNext;
       var copy = Matrix.clone(this);
-      var cell = copy.cells[row][column];
+      var cell = copy.getCell(position);
       cell.value = originalCell.alternatives.toList()[tryNext];
       cell.solved = true;
       return copy;
@@ -964,9 +973,9 @@ class Matrix {
     return null;
   }
 
-  ({int row, int column})? get nextCellWithAlternatives {
+  CellPosition? get nextCellWithAlternatives {
     var l = 1000;
-    ({int row, int column})? candidate;
+    CellPosition? candidate;
     for (int r = 0; r < cells.length; r++) {
       for (int c = 0; c < cells[r].length; c++) {
         var cell = cells[r][c];
@@ -976,7 +985,7 @@ class Matrix {
         var nAlternatives = cell.alternatives.length;
         if (nAlternatives < l) {
           l = nAlternatives;
-          candidate = (row: r, column: c);
+          candidate = CellPosition(row: r, column: c);
           if (l == 2) {
             return candidate;
           }
@@ -1035,7 +1044,7 @@ class Matrix {
   ///
   int get valueCount {
     var occupied = 0;
-    cellsDo((c, _, _) {
+    cellsDo((c) {
       if (c.value != null) {
         occupied++;
       }
@@ -1065,7 +1074,7 @@ class Matrix {
   /// Attach a listener to all matrix cells and listen to a change of the error state of the cell.
   ///
   set onCellErrorStateChanged(void Function(Cell cell) onCellErrorStateChanged) {
-    cellsDo((c, _, _) { c.onErrorStateChanged = () => onCellErrorStateChanged(c); return true; });
+    cellsDo((c) { c.onErrorStateChanged = () => onCellErrorStateChanged(c); return true; });
   }
 
   void Function(String aspect)? onChanged;
@@ -1092,7 +1101,7 @@ class Matrix {
       return null;
     }
     Matrix? m;
-    while ((m = tryNextAlternative(row: cellPos.row, column: cellPos.column)) != null) {
+    while ((m = tryNextAlternative(position: cellPos)) != null) {
       _stepsToSolveGame++;
       var done = m!._solve(level + 1);
       if (done != null) {
@@ -1146,7 +1155,7 @@ class Matrix {
   /// be defined as part of the game played.
   ///
   void markGivenCells() {
-    cellsDo((c, _, _) {
+    cellsDo((c) {
       c.given = c.value != null;
       return true;
     });
@@ -1158,13 +1167,13 @@ class Matrix {
     }
   }
 
-  bool isCellEditable(int column, int row, bool creatingGame) {
-    var c = cells[row][column];
+  bool isCellEditable(CellPosition cellPosition, bool creatingGame) {
+    var c = getCell(cellPosition);
     return c.given ? creatingGame : !c.given;
   }
 
   void clearEdits() {
-    cellsDo((c,_,_) {
+    cellsDo((c) {
       if (!c.given) {
         c.solved = false;
         c.value = null;
@@ -1175,5 +1184,7 @@ class Matrix {
 
   String debugPrint() =>
       cells.map((row) => row.map((c) => "${c.value ?? 'x'} ").join("")).join("\n");
+
+  Cell getCell(CellPosition cellPosition) => cells[cellPosition.row][cellPosition.column];
 
 }

@@ -104,7 +104,7 @@ class _NewGameOptionsSelectorWidgetState
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         if (rand.nextBool()) {
-          sampleMatrix.setValue(i, j, rand.nextInt(gridSize) + 1);
+          sampleMatrix.setValue(CellPosition(row: i, column: j), rand.nextInt(gridSize) + 1);
         }
       }
     }
