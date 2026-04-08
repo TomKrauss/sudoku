@@ -13,27 +13,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:markdown_widget/markdown_widget.dart';
-import 'package:sudoku/cell_widget.dart';
-import 'package:sudoku/grid_paper.dart';
 import 'package:sudoku/input_dialogs.dart';
-import 'package:sudoku/matrix.dart';
 import 'package:sudoku/model.dart';
-
-///
-/// Options affecting the way the board displays the games.
-///
-class BoardOptions {
-  ///
-  /// Whether the alternatives should be displayed for each cell.
-  ///
-  bool showTips = false;
-
-  ///
-  /// Whether all cells having a candidate matching the current
-  /// cell value should be highlighted.
-  ///
-  bool highlightCells = false;
-}
+import 'package:sudoku/sudoku_matrix_widget.dart';
 
 ///
 /// Main Entry Point into the Sudoku Application
@@ -69,19 +51,22 @@ class SudokuBoard extends StatefulWidget {
 }
 
 class _SudokuBoardState extends State<SudokuBoard> {
-  final Map<CellPosition, FocusNode> focusNodes = {};
+  final matrixBoardKey = GlobalKey<SudokuMatrixWidgetState>();
   BoardOptions options = BoardOptions();
   final games = Games();
   final vScrollController = ScrollController();
   final hScrollController = ScrollController();
   Game? model;
-  Cell? focusCell;
   bool _helpPage = false;
 
   ///
   /// The options most recently selected, when generating new games.
   ///
   NewGameOptions? _newGameOptions;
+
+  bool get creating => model?.gameMode == GameMode.creating;
+  bool get editing => playing || creating;
+  bool get playing => model?.gameMode == GameMode.playing;
 
   @override
   void initState() {
@@ -96,41 +81,12 @@ class _SudokuBoardState extends State<SudokuBoard> {
     });
   }
 
-  bool get creating => model?.gameMode == GameMode.creating;
-
-  bool get editing => model?.gameMode == GameMode.playing || creating;
-
-  bool get playing => model?.gameMode == GameMode.playing;
-  bool get creatingGame => model?.gameMode == GameMode.creating;
-
   @override
   void dispose() {
     super.dispose();
-    for (final n in focusNodes.values) {
-      n.dispose();
-    }
-    focusNodes.clear();
     vScrollController.dispose();
     hScrollController.dispose();
   }
-
-  ///
-  /// Returns the focus node for a given cell in a game
-  ///
-  FocusNode forCell(CellPosition cell, [Cell? c]) =>
-      focusNodes.putIfAbsent(cell, () {
-        var result = FocusNode();
-        result.addListener(() {
-          if (c?.value != null && options.highlightCells) {
-            if (focusCell != c) {
-              setState(() {
-                focusCell = c;
-              });
-            }
-          }
-        });
-        return result;
-      });
 
   ///
   /// Load a game from the list of games available.
@@ -299,77 +255,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
     }
   }
 
-  CellPosition wrapCellPosition(CellPosition p) {
-    final rowLength = model?.columnCount;
-    if (rowLength == null) {
-      return p;
-    }
-    var newX = p.column;
-    var newY = p.row;
-    while (newX < 0) {
-      newX += rowLength;
-      newY--;
-    }
-    while (newX >= rowLength) {
-      newX -= rowLength;
-      newY++;
-    }
-    while (newY < 0) {
-      newY += model!.rowCount;
-      newX--;
-      if (newX < 0) {
-        newX += rowLength;
-      }
-    }
-    while (newY >= model!.rowCount) {
-      newY -= model!.rowCount;
-      newX++;
-      if (newX >= rowLength) {
-        newX = 0;
-      }
-    }
-    return CellPosition(column: newX, row: newY);
-  }
-
   ///
   /// Set the focus to the 1st cell in the board.
   ///
   void focusBoard() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      for (final entry in focusNodes.entries) {
-        var p = entry.key;
-        if (model?.isCellEditable(p) == true) {
-          entry.value.requestFocus();
-          return;
-        }
-      }
-    });
-  }
-
-  ///
-  /// Move the focus to the next cell with a given delta in cell positions from the current
-  /// game cell. It is assumed, that are ordered from left top to bottom right.
-  ///
-  void moveCellFocusBy(int delta) {
-    for (final entry in focusNodes.entries) {
-      if (entry.value.hasFocus) {
-        var p = entry.key;
-        p = wrapCellPosition(
-          CellPosition(column: p.column + delta, row: p.row),
-        );
-        var originalPoint = p;
-        while (model?.isCellEditable(p) == false) {
-          p = wrapCellPosition(
-            CellPosition(column: p.column + delta, row: p.row),
-          );
-          if (p == originalPoint) {
-            return;
-          }
-        }
-        var focusNode = forCell(p);
-        focusNode.requestFocus();
-      }
-    }
+    matrixBoardKey.currentState?.focusBoard();
   }
 
   ButtonStyle get buttonStyle =>
@@ -448,8 +338,6 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
         matrix?.onCellErrorStateChanged = f;
         matrix?.onChanged = f;
-        var filter = localModel.inputFilter;
-        var colorScheme = Theme.of(context).colorScheme;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -475,130 +363,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
                         child: SizedBox(
                           width: width,
                           height: height,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.max,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              CallbackShortcuts(
-                                bindings: <ShortcutActivator, VoidCallback>{
-                                  const SingleActivator(
-                                    LogicalKeyboardKey.arrowUp,
-                                  ): () {
-                                    moveCellFocusBy(-localModel.columnCount);
-                                  },
-                                  const SingleActivator(
-                                    LogicalKeyboardKey.arrowDown,
-                                  ): () {
-                                    moveCellFocusBy(localModel.columnCount);
-                                  },
-                                  const SingleActivator(
-                                    LogicalKeyboardKey.arrowRight,
-                                  ): () {
-                                    moveCellFocusBy(1);
-                                  },
-                                  const SingleActivator(
-                                    LogicalKeyboardKey.arrowLeft,
-                                  ): () {
-                                    moveCellFocusBy(-1);
-                                  },
-                                },
-                                child: CustomGridPaper(
-                                  divisions: localModel.gridCount,
-                                  majorGridColumnBreaks:
-                                      matrix?.blockColumnBreaks ?? [3, 6],
-                                  majorGridRowBreaks:
-                                      matrix?.blockRowBreaks ?? [3, 6],
-
-                                  color:
-                                      (!options.showTips ||
-                                          localModel.current?.solvable == true)
-                                      ? (playing
-                                            ? colorScheme.primary
-                                            : Colors.grey.shade300)
-                                      : colorScheme.error,
-                                  interval: localModel.gridCount * cellSize,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: localModel.cells
-                                        .map(
-                                          (l) => Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: l
-                                                .map(
-                                                  (c) => CellWidget(
-                                                    c,
-                                                    editing
-                                                        ? (s) {
-                                                            localModel
-                                                                .editCellValue(
-                                                                  c,
-                                                                  s,
-                                                                );
-                                                            onCurrentGameChanged();
-                                                            if (localModel
-                                                                    .gridCount <
-                                                                10) {
-                                                              WidgetsBinding
-                                                                  .instance
-                                                                  .addPostFrameCallback((
-                                                                    _,
-                                                                  ) {
-                                                                    moveCellFocusBy(
-                                                                      s?.isEmpty ==
-                                                                              true
-                                                                          ? 0
-                                                                          : 1,
-                                                                    );
-                                                                  });
-                                                            }
-                                                          }
-                                                        : null,
-                                                    cellSize: cellSize,
-                                                    inputFilter: filter,
-                                                    focusNode: forCell(
-                                                      localModel.placementOf(c),
-                                                      c,
-                                                    ),
-                                                    highlighted:
-                                                        options
-                                                            .highlightCells &&
-                                                        (c.alternatives
-                                                                .contains(
-                                                                  focusCell
-                                                                      ?.value,
-                                                                ) ||
-                                                            c.value ==
-                                                                focusCell
-                                                                    ?.value),
-                                                    showTips:
-                                                        options.showTips ||
-                                                        localModel.gameMode ==
-                                                            GameMode.solved,
-                                                    editable:
-                                                        editing &&
-                                                        (creatingGame ||
-                                                            !c.given),
-                                                    onToggleCellMark: () {
-                                                      setState(() {
-                                                        localModel
-                                                            .toggleCellFoundMarker(
-                                                              c,
-                                                            );
-                                                      });
-                                                    },
-                                                  ),
-                                                )
-                                                .toList(),
-                                          ),
-                                        )
-                                        .toList(),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          child: SudokuMatrixWidget(key: matrixBoardKey, localModel: localModel,
+                              options: options, cellSize: cellSize, onCurrentGameChanged: onCurrentGameChanged),
                         ),
                       ),
                     ),
