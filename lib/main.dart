@@ -27,12 +27,12 @@ class BoardOptions {
   /// Whether the alternatives should be displayed for each cell.
   ///
   bool showTips = false;
+
   ///
   /// Whether all cells having a candidate matching the current
   /// cell value should be highlighted.
   ///
   bool highlightCells = false;
-
 }
 
 ///
@@ -72,14 +72,16 @@ class _SudokuBoardState extends State<SudokuBoard> {
   final Map<CellPosition, FocusNode> focusNodes = {};
   BoardOptions options = BoardOptions();
   final games = Games();
+  final vScrollController = ScrollController();
+  final hScrollController = ScrollController();
   Game? model;
   Cell? focusCell;
   bool _helpPage = false;
+
   ///
   /// The options most recently selected, when generating new games.
   ///
   NewGameOptions? _newGameOptions;
-
 
   @override
   void initState() {
@@ -96,8 +98,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   bool get creating => model?.gameMode == GameMode.creating;
 
-  bool get editing =>
-      model?.gameMode == GameMode.playing || creating;
+  bool get editing => model?.gameMode == GameMode.playing || creating;
 
   bool get playing => model?.gameMode == GameMode.playing;
   bool get creatingGame => model?.gameMode == GameMode.creating;
@@ -109,6 +110,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
       n.dispose();
     }
     focusNodes.clear();
+    vScrollController.dispose();
+    hScrollController.dispose();
   }
 
   ///
@@ -178,7 +181,12 @@ class _SudokuBoardState extends State<SudokuBoard> {
     if (!mounted) {
       return;
     }
-    var options = await selectNewGameOptions(context, title: "Create new empty Game", options: useOptions, generateGame: false);
+    var options = await selectNewGameOptions(
+      context,
+      title: "Create new empty Game",
+      options: useOptions,
+      generateGame: false,
+    );
     if (options == null) {
       return;
     }
@@ -205,7 +213,12 @@ class _SudokuBoardState extends State<SudokuBoard> {
       return;
     }
     var useOptions = defaultOptions;
-    var options = await selectNewGameOptions(context, title: "Generate Game", options: useOptions, generateGame: true);
+    var options = await selectNewGameOptions(
+      context,
+      title: "Generate Game",
+      options: useOptions,
+      generateGame: true,
+    );
     if (options == null) {
       return;
     }
@@ -341,10 +354,14 @@ class _SudokuBoardState extends State<SudokuBoard> {
     for (final entry in focusNodes.entries) {
       if (entry.value.hasFocus) {
         var p = entry.key;
-        p = wrapCellPosition(CellPosition(column: p.column + delta, row: p.row));
+        p = wrapCellPosition(
+          CellPosition(column: p.column + delta, row: p.row),
+        );
         var originalPoint = p;
         while (model?.isCellEditable(p) == false) {
-          p = wrapCellPosition(CellPosition(column: p.column + delta, row: p.row));
+          p = wrapCellPosition(
+            CellPosition(column: p.column + delta, row: p.row),
+          );
           if (p == originalPoint) {
             return;
           }
@@ -382,8 +399,13 @@ class _SudokuBoardState extends State<SudokuBoard> {
   );
 
   Widget get contentArea {
-    var width = (MediaQuery.widthOf(context) - 50);
-    var height = (MediaQuery.heightOf(context) - 130);
+    var availWidth = MediaQuery.widthOf(context) - 20;
+    var width = availWidth;
+    var availHeight = MediaQuery.heightOf(context) - 110;
+    if (availWidth < 300) {
+      availHeight -= 20;
+    }
+    var height = availHeight;
     return StreamBuilder(
       stream: games.current,
       builder: (context, snapshot) {
@@ -409,194 +431,275 @@ class _SudokuBoardState extends State<SudokuBoard> {
         }
         model = localModel;
         var cellSize = (height > width ? width : height) / localModel.gridCount;
+        if (cellSize < 40) {
+          cellSize = 40;
+          width = cellSize * localModel.gridCount;
+          height = width;
+        }
+        if (height > width) {
+          height = width;
+        } else {
+          width = height;
+        }
         var matrix = localModel.current;
         void f(c) {
           setState(() {});
         }
+
         matrix?.onCellErrorStateChanged = f;
         matrix?.onChanged = f;
         var filter = localModel.inputFilter;
         var colorScheme = Theme.of(context).colorScheme;
-        return SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: CallbackShortcuts(
-                  bindings: <ShortcutActivator, VoidCallback>{
-                    const SingleActivator(LogicalKeyboardKey.arrowUp): () {
-                      moveCellFocusBy(-localModel.columnCount);
-                    },
-                    const SingleActivator(LogicalKeyboardKey.arrowDown): () {
-                      moveCellFocusBy(localModel.columnCount);
-                    },
-                    const SingleActivator(LogicalKeyboardKey.arrowRight): () {
-                      moveCellFocusBy(1);
-                    },
-                    const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
-                      moveCellFocusBy(-1);
-                    },
-                  },
-                  child: CustomGridPaper(
-                    divisions: localModel.gridCount,
-                    majorGridColumnBreaks: matrix?.blockColumnBreaks ?? [3, 6],
-                    majorGridRowBreaks: matrix?.blockRowBreaks ?? [3, 6],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: SizedBox(
+                width: availWidth,
+                height: availHeight,
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  thickness: 20,
+                  controller: hScrollController,
+                  child: SingleChildScrollView(
+                    controller: hScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      thickness: 20,
+                      scrollbarOrientation: ScrollbarOrientation.left,
+                      controller: vScrollController,
+                      child: SingleChildScrollView(
+                        controller: vScrollController,
+                        scrollDirection: Axis.vertical,
+                        child: SizedBox(
+                          width: width,
+                          height: height,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.max,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              CallbackShortcuts(
+                                bindings: <ShortcutActivator, VoidCallback>{
+                                  const SingleActivator(
+                                    LogicalKeyboardKey.arrowUp,
+                                  ): () {
+                                    moveCellFocusBy(-localModel.columnCount);
+                                  },
+                                  const SingleActivator(
+                                    LogicalKeyboardKey.arrowDown,
+                                  ): () {
+                                    moveCellFocusBy(localModel.columnCount);
+                                  },
+                                  const SingleActivator(
+                                    LogicalKeyboardKey.arrowRight,
+                                  ): () {
+                                    moveCellFocusBy(1);
+                                  },
+                                  const SingleActivator(
+                                    LogicalKeyboardKey.arrowLeft,
+                                  ): () {
+                                    moveCellFocusBy(-1);
+                                  },
+                                },
+                                child: CustomGridPaper(
+                                  divisions: localModel.gridCount,
+                                  majorGridColumnBreaks:
+                                      matrix?.blockColumnBreaks ?? [3, 6],
+                                  majorGridRowBreaks:
+                                      matrix?.blockRowBreaks ?? [3, 6],
 
-                    color: (!options.showTips || localModel.current?.solvable == true)
-                        ? (playing ? colorScheme.primary : Colors.grey.shade300)
-                        : colorScheme.error,
-                    interval: localModel.gridCount * cellSize,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: localModel.cells
-                          .map(
-                            (l) => Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: l
-                                  .map(
-                                    (c) => CellWidget(
-                                      c,
-                                      editing
-                                          ? (s) {
-                                              localModel.editCellValue(c, s);
-                                              onCurrentGameChanged();
-                                              if (localModel.gridCount < 10) {
-                                                WidgetsBinding.instance
-                                                    .addPostFrameCallback((_) {
-                                                      moveCellFocusBy(
-                                                        s?.isEmpty == true
-                                                            ? 0
-                                                            : 1,
-                                                      );
-                                                    });
-                                              }
-                                            }
-                                          : null,
-                                      cellSize: cellSize,
-                                      inputFilter: filter,
-                                      focusNode: forCell(
-                                        localModel.placementOf(c),c
-                                      ),
-                                      highlighted: options.highlightCells && (c.alternatives.contains(focusCell?.value) || c.value == focusCell?.value),
-                                      showTips:
-                                          options.showTips ||
-                                          localModel.gameMode ==
-                                              GameMode.solved,
-                                      editable:
-                                          editing && (creatingGame || !c.given),
-                                      onToggleCellMark: () {
-                                        setState(() {
-                                          localModel.toggleCellFoundMarker(c);
-                                        });
-                                      },
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          )
-                          .toList(),
+                                  color:
+                                      (!options.showTips ||
+                                          localModel.current?.solvable == true)
+                                      ? (playing
+                                            ? colorScheme.primary
+                                            : Colors.grey.shade300)
+                                      : colorScheme.error,
+                                  interval: localModel.gridCount * cellSize,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: localModel.cells
+                                        .map(
+                                          (l) => Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: l
+                                                .map(
+                                                  (c) => CellWidget(
+                                                    c,
+                                                    editing
+                                                        ? (s) {
+                                                            localModel
+                                                                .editCellValue(
+                                                                  c,
+                                                                  s,
+                                                                );
+                                                            onCurrentGameChanged();
+                                                            if (localModel
+                                                                    .gridCount <
+                                                                10) {
+                                                              WidgetsBinding
+                                                                  .instance
+                                                                  .addPostFrameCallback((
+                                                                    _,
+                                                                  ) {
+                                                                    moveCellFocusBy(
+                                                                      s?.isEmpty ==
+                                                                              true
+                                                                          ? 0
+                                                                          : 1,
+                                                                    );
+                                                                  });
+                                                            }
+                                                          }
+                                                        : null,
+                                                    cellSize: cellSize,
+                                                    inputFilter: filter,
+                                                    focusNode: forCell(
+                                                      localModel.placementOf(c),
+                                                      c,
+                                                    ),
+                                                    highlighted:
+                                                        options
+                                                            .highlightCells &&
+                                                        (c.alternatives
+                                                                .contains(
+                                                                  focusCell
+                                                                      ?.value,
+                                                                ) ||
+                                                            c.value ==
+                                                                focusCell
+                                                                    ?.value),
+                                                    showTips:
+                                                        options.showTips ||
+                                                        localModel.gameMode ==
+                                                            GameMode.solved,
+                                                    editable:
+                                                        editing &&
+                                                        (creatingGame ||
+                                                            !c.given),
+                                                    onToggleCellMark: () {
+                                                      setState(() {
+                                                        localModel
+                                                            .toggleCellFoundMarker(
+                                                              c,
+                                                            );
+                                                      });
+                                                    },
+                                                  ),
+                                                )
+                                                .toList(),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-              SizedBox(height: 20),
-              Padding(
-                padding: EdgeInsetsGeometry.all(15),
-                child: Text(
-                  "${playing
-                      ? 'Playing'
-                      : editing
-                      ? 'Editing'
-                      : 'Selected'} '${localModel.name}'. Difficulty level ${localModel.difficultyLevel}",
-                ),
-              )
-        ]));
+            ),
+            Padding(
+              padding: EdgeInsetsGeometry.all(15),
+              child: Text(
+                "${playing
+                    ? 'Playing'
+                    : editing
+                    ? 'Editing'
+                    : 'Selected'} '${localModel.name}'. Difficulty level ${localModel.difficultyLevel}",
+              ),
+            ),
+          ],
+        );
       },
     );
   }
 
   Widget get drawer => Drawer(
-      width: 200,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          ElevatedButton(
-            onPressed: () => loadGame(model),
-            style: buttonStyle,
-            child: Text("Select Game..."),
+    width: 200,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        ElevatedButton(
+          onPressed: () => loadGame(model),
+          style: buttonStyle,
+          child: Text("Select Game..."),
+        ),
+        ElevatedButton(
+          onPressed: () => edit(create: !creating),
+          style: buttonStyle,
+          child: Text(creating ? "Play" : "Edit"),
+        ),
+        ElevatedButton(
+          onPressed: generateGame,
+          style: buttonStyle,
+          child: Text("Generate Game..."),
+        ),
+        ElevatedButton(
+          onPressed: newGame,
+          style: buttonStyle,
+          child: Text("New Game..."),
+        ),
+        ElevatedButton(
+          onPressed: save,
+          style: buttonStyle,
+          child: Text("Save"),
+        ),
+        Divider(),
+        ElevatedButton(
+          onPressed: toggleHelp,
+          style: buttonStyle,
+          child: Text(_helpPage ? "Back to Game" : "Help"),
+        ),
+        ElevatedButton(
+          onPressed: () => showSolution(model),
+          style: buttonStyle,
+          child: Text(
+            model?.gameMode == GameMode.solved
+                ? "Clear Solution Hints"
+                : "Show Solution",
           ),
-          ElevatedButton(
-            onPressed: () => edit(create: !creating),
-            style: buttonStyle,
-            child: Text(creating ? "Play" : "Edit"),
+        ),
+        Flexible(
+          child: CheckboxListTile(
+            onChanged: (v) {
+              setState(() {
+                options.showTips = v == true;
+              });
+              onCurrentGameChanged();
+            },
+            value: options.showTips,
+            title: Text("Show Tips"),
           ),
-          ElevatedButton(
-            onPressed: generateGame,
-            style: buttonStyle,
-            child: Text("Generate Game..."),
+        ),
+        Flexible(
+          child: CheckboxListTile(
+            onChanged: (v) {
+              setState(() {
+                options.highlightCells = v == true;
+              });
+              onCurrentGameChanged();
+            },
+            value: options.highlightCells,
+            title: Text("Highlight Cells"),
           ),
-          ElevatedButton(
-            onPressed: newGame,
-            style: buttonStyle,
-            child: Text("New Game..."),
-          ),
-          ElevatedButton(
-            onPressed: save,
-            style: buttonStyle,
-            child: Text("Save"),
-          ),
-          Divider(),
-          ElevatedButton(
-            onPressed: toggleHelp,
-            style: buttonStyle,
-            child: Text(_helpPage ? "Back to Game" : "Help"),
-          ),
-          ElevatedButton(
-            onPressed: () => showSolution(model),
-            style: buttonStyle,
-            child: Text(
-              model?.gameMode == GameMode.solved
-                  ? "Clear Solution Hints"
-                  : "Show Solution",
-            ),
-          ),
-          Flexible(
-            child: CheckboxListTile(
-              onChanged: (v) {
-                setState(() {
-                  options.showTips = v == true;
-                });
-                onCurrentGameChanged();
-              },
-              value: options.showTips,
-              title: Text("Show Tips"),
-            ),
-          ),
-          Flexible(
-            child: CheckboxListTile(
-              onChanged: (v) {
-                setState(() {
-                  options.highlightCells = v == true;
-                });
-                onCurrentGameChanged();
-              },
-              value: options.highlightCells,
-              title: Text("Highlight Cells"),
-            ),
-          ),
-
-        ],));
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(widget.title)),
     endDrawer: drawer,
-    body: _helpPage
-        ? helpArea
-        : contentArea
+    body: _helpPage ? helpArea : contentArea,
   );
 }

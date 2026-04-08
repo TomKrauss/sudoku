@@ -54,8 +54,14 @@ class _GridPaperPainter extends CustomPainter {
           : isBreak
           ? 1.5
           : 0.5;
-      var xPos = x*interval/allDivisions;
-      canvas.drawLine(Offset(xPos, 1), Offset(xPos, size.height), linePaint);
+      var xPos = x*size.width/allDivisions;
+      if (x == 0) {
+        xPos++;
+      }
+      if (x == allDivisions) {
+        xPos--;
+      }
+      canvas.drawLine(Offset(xPos, 1), Offset(xPos, size.height-1), linePaint);
     }
     for (int y = 0; y <= allDivisions; y++) {
       bool isBreak = majorGridRowBreaks.contains(y);
@@ -66,7 +72,13 @@ class _GridPaperPainter extends CustomPainter {
           ? 1.5
           : 0.5;
       var yPos = y * size.height / allDivisions;
-      canvas.drawLine(Offset(0, yPos+linePaint.strokeWidth/2), Offset(size.width, yPos), linePaint);
+      if (y == 0) {
+        yPos++;
+      }
+      if (y == allDivisions) {
+        yPos--;
+      }
+      canvas.drawLine(Offset(1, yPos), Offset(size.width-1, yPos), linePaint);
     }
     var f = getCellContents;
     if (f != null) {
