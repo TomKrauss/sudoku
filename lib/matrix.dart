@@ -129,6 +129,15 @@ class Matrix {
   final List<VoidCallback> _notifiers = [];
 
   static final Map<int, Map<int, int>> _emptyPlacesPerLevelAndSize = {
+    4: {
+      0: 2,
+      1: 4,
+      2: 5,
+      3: 6,
+      4: 7,
+      5: 8,
+      6: 9
+    },
     6: {
       0: 8,
       1: 10,
@@ -894,9 +903,10 @@ class Matrix {
   bool addLastValueToGroup(List<Cell> cells) {
     var empty = cells.where((c) => c.value == null);
     if (empty.length == 1) {
+      var count = rowCount;
       var values = cells.map((c) => c.value);
       var candidate = empty.first;
-      for (int i = 1; i <= rowCount; i++) {
+      for (int i = 1; i <= count; i++) {
         if (!values.contains(i)) {
           candidate.value = i;
           candidate.solved = true;
@@ -1008,12 +1018,31 @@ class Matrix {
   int? _difficultyLevel;
 
   ///
-  /// Return a number identifying the difficulty to solve this matrix. This is currently
+  /// Returns the difficulty of this Sudoku game matching the difficulty which can
+  /// be used to generate this Sudoku.
+  ///
+  int get difficulty {
+    var nEmpty = cellsNotGivenOrEmpty.length;
+    var levels = _emptyPlacesPerLevelAndSize[gridSize];
+    if (levels == null) {
+      return 0;
+    }
+    for (int i = 0; i < 10; i++) {
+      var max = levels[i];
+      if (max != null && nEmpty < max) {
+        return i;
+      }
+    }
+    return 7;
+  }
+
+  ///
+  /// Return a metrics identifying the difficulty to solve this matrix. This is currently
   /// calculated based on the number of empty cells compared to the grid count and on the
   /// number of possible alternatives still possible for each cell also in comparison to the grid
   /// count.
   ///
-  int get difficultyLevel {
+  int get difficultyMetrics {
     var level = _difficultyLevel;
     if (level != null) {
       return level;
@@ -1021,7 +1050,7 @@ class Matrix {
     var m = Matrix.clone(this);
     m.clearGuesses();
     m.recalculateAlternatives();
-    var nEmpty = m.emptyCells.length;
+    var nEmpty = m.cellsNotGivenOrEmpty.length;
     var nAlternatives = m.allCells.fold(0, (a,c) => a+c.alternatives.length);
     var count = gridSize;
     if (count > 20) {
@@ -1037,7 +1066,13 @@ class Matrix {
   ///
   /// Returns all "empty cells", where no value has been placed yet.
   ///
-  Iterable<Cell> get emptyCells => allCells.where((c) => c.value == null && c.given);
+  Iterable<Cell> get emptyCells => allCells.where((c) => c.value == null);
+
+  ///
+  /// Returns all "empty cells", when looking onto the original game setup excluding the cells
+  /// edited by the user.
+  ///
+  Iterable<Cell> get cellsNotGivenOrEmpty => allCells.where((c) => !c.given);
 
   ///
   /// Returns the number of values (occupied places) in the matrix.
@@ -1142,7 +1177,7 @@ class Matrix {
     if (creatingGame) {
       var l = _difficultyLevel;
       _difficultyLevel = null;
-      var l2 = difficultyLevel;
+      var l2 = difficultyMetrics;
       if (l2 != l) {
         _changed("difficulty");
       }

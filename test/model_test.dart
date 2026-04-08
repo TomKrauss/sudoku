@@ -129,7 +129,8 @@ x x x 1 x x x x x""");
       expect(m.valueAt(1, 4), 7);
       expect(m.valueAt(7, 0), 9);
       expect(m.valueAt(8, 8), 4);
-      expect(m.difficultyLevel, 10);
+      expect(m.difficultyMetrics, 37);
+      expect(m.difficulty, 7);
       // Unsolvable matrix
       var m21 = Matrix.parse(
           "_ _ _ 8 3 _ _ _ _ "
@@ -142,7 +143,7 @@ x x x 1 x x x x x""");
           "9 _ _ _ _ _ _ _ 5 "
           "_ _ 1 _ _ _ _ _ 4 "
       );
-      expect(m21.difficultyLevel > m.difficultyLevel, true);
+      expect(m21.difficultyMetrics > m.difficultyMetrics, true);
       var m2 = m.solve();
       expect(m2, isNotNull);
       m = Matrix.parse(

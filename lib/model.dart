@@ -164,7 +164,8 @@ class Game {
 
   Matrix get currentNotNull => current ?? matrix;
 
-  int get difficultyLevel => matrix.difficultyLevel;
+  int get difficultyMetrics => matrix.difficultyMetrics;
+  int get difficulty => currentNotNull.difficulty;
 
   ///
   /// The input filter restricting the input which can be types by the user

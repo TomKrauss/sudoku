@@ -51,6 +51,7 @@ class SudokuBoard extends StatefulWidget {
 }
 
 class _SudokuBoardState extends State<SudokuBoard> {
+  String operationText = "Operation in progress";
   final matrixBoardKey = GlobalKey<SudokuMatrixWidgetState>();
   BoardOptions options = BoardOptions();
   final games = Games();
@@ -168,6 +169,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
     if (!mounted) {
       return;
     }
+    operationText = "Generating Game";
     var useOptions = defaultOptions;
     var options = await selectNewGameOptions(
       context,
@@ -228,6 +230,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
       return;
     }
     await _pop();
+    operationText = "Solving game";
     if (model.gameMode == GameMode.solved) {
       model.gameMode = GameMode.playing;
     } else {
@@ -316,7 +319,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text("Operation in Progress. Please wait."),
+                    Text("$operationText. Please wait."),
                     SizedBox(height: 20),
                     CircularProgressIndicator(),
                   ],
@@ -380,13 +383,16 @@ class _SudokuBoardState extends State<SudokuBoard> {
             ),
             Padding(
               padding: EdgeInsetsGeometry.all(15),
-              child: Text(
+              child: Row(children: [
+                Icon(playing ? Icons.games_outlined : Icons.edit),
+                SizedBox(width: 10),
+                Text(
                 "${playing
                     ? 'Playing'
                     : editing
                     ? 'Editing'
-                    : 'Selected'} '${localModel.name}'. Difficulty level ${localModel.difficultyLevel}",
-              ),
+                    : 'Selected'} '${localModel.name}'. Difficulty ${localModel.difficulty} (${localModel.difficultyMetrics})",
+              )]),
             ),
           ],
         );
