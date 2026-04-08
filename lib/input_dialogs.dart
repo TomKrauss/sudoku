@@ -11,7 +11,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:sudoku/assets/board_preview_widget.dart';
+import 'package:sudoku/board_preview_widget.dart';
 import 'package:sudoku/matrix.dart';
 import 'package:sudoku/model.dart';
 

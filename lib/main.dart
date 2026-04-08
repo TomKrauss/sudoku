@@ -253,6 +253,12 @@ class _SudokuBoardState extends State<SudokuBoard> {
         model?.onChanged();
       });
     }
+    var m = model?.current;
+    if (playing && m != null && m.solved && m.checkValid) {
+      showAlertDialog(context, title: "Sudoku", message: "Congratulations. You solved the game.", buttons: [
+        "OK"
+      ]);
+    }
   }
 
   ///
