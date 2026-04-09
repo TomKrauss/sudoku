@@ -357,11 +357,13 @@ class Games {
   /// Select a game given its name and mae it the current game. A game with the given name must exist or
   /// an exception is thrown.
   ///
-  Future<void> selectGameNamed(String name) async {
+  Future<Game?> selectGameNamed(String name) async {
     var m = games.where((g) => g.name == name).firstOrNull;
     if (m != null && m != await current.first) {
       _streamController.add(m);
+      return m;
     }
+    return null;
   }
 
   void useSample() {

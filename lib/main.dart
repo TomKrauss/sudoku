@@ -13,6 +13,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:markdown_widget/markdown_widget.dart';
+import 'package:sudoku/camera_widget.dart';
 import 'package:sudoku/input_dialogs.dart';
 import 'package:sudoku/model.dart';
 import 'package:sudoku/sudoku_matrix_widget.dart';
@@ -35,7 +36,7 @@ class SudokuApplication extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'Sudoku Solver',
     debugShowCheckedModeBanner: false,
-    home: const SudokuBoard(title: 'Sudoku'),
+    home: const SudokuBoard(),
   );
 }
 
@@ -43,13 +44,17 @@ class SudokuApplication extends StatelessWidget {
 /// A widget displaying a Sudoku Board.
 ///
 class SudokuBoard extends StatefulWidget {
-  const SudokuBoard({super.key, required this.title});
-  final String title;
+  const SudokuBoard({super.key});
 
   @override
   State<SudokuBoard> createState() => _SudokuBoardState();
 }
 
+enum SudokuBodyMode {
+  displayHelp,
+  displayMatrix,
+  displayCamera
+}
 class _SudokuBoardState extends State<SudokuBoard> {
   String operationText = "Operation in progress";
   final matrixBoardKey = GlobalKey<SudokuMatrixWidgetState>();
@@ -58,7 +63,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   final vScrollController = ScrollController();
   final hScrollController = ScrollController();
   Game? model;
-  bool _helpPage = false;
+  SudokuBodyMode _bodyMode = SudokuBodyMode.displayMatrix;
 
   ///
   /// The options most recently selected, when generating new games.
@@ -113,10 +118,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
     }
     final gameName = await selectGame(context);
     if (gameName != null) {
-      setState(() {
-        games.selectGameNamed(gameName);
-        onCurrentGameChanged();
-      });
+      this.model = await games.selectGameNamed(gameName);
+      setState(onCurrentGameChanged);
     }
   }
 
@@ -218,7 +221,25 @@ class _SudokuBoardState extends State<SudokuBoard> {
   void toggleHelp() {
     _pop();
     setState(() {
-      _helpPage = !_helpPage;
+      if (_bodyMode != SudokuBodyMode.displayHelp) {
+        _bodyMode = SudokuBodyMode.displayHelp;
+      } else {
+        _bodyMode = SudokuBodyMode.displayMatrix;
+      }
+    });
+  }
+
+  ///
+  /// Display the camera to scan a game from a newspaper or the like..
+  ///
+  void scanGame() {
+    _pop();
+    setState(() {
+      if (_bodyMode != SudokuBodyMode.displayCamera) {
+        _bodyMode = SudokuBodyMode.displayCamera;
+      } else {
+        _bodyMode = SudokuBodyMode.displayMatrix;
+      }
     });
   }
 
@@ -276,10 +297,12 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   Future<String> _loadHelpFile() => rootBundle.loadString("lib/assets/help.md");
 
+  Widget get cameraArea => CameraWidget();
+
   Widget get helpArea => FutureBuilder(
     future: _loadHelpFile(),
     builder: (context, snapshot) => Padding(
-      padding: EdgeInsets.all(10),
+      padding: EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Column(
         children: [
           Expanded(
@@ -300,7 +323,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
   Widget get contentArea {
     var availWidth = MediaQuery.widthOf(context) - 20;
     var width = availWidth;
-    var availHeight = MediaQuery.heightOf(context) - 110;
+    var availHeight = MediaQuery.heightOf(context) - 115;
     if (availWidth < 300) {
       availHeight -= 20;
     }
@@ -344,7 +367,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
         void f(c) {
           setState(() {});
         }
-
+        var infoColor = playing ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.secondary;
+        var infoFGColor = playing ? Theme.of(context).colorScheme.onTertiary : Theme.of(context).colorScheme.onSecondary;
         matrix?.onCellErrorStateChanged = f;
         matrix?.onChanged = f;
         return Column(
@@ -381,19 +405,23 @@ class _SudokuBoardState extends State<SudokuBoard> {
                 ),
               ),
             ),
-            Padding(
+            Container(
+                color: infoColor,
+                margin: EdgeInsets.only(top: 5),
+                child: Padding(
               padding: EdgeInsetsGeometry.all(15),
               child: Row(children: [
-                Icon(playing ? Icons.games_outlined : Icons.edit),
+                Icon(playing ? Icons.games_outlined : Icons.edit, color: infoFGColor,),
                 SizedBox(width: 10),
                 Text(
                 "${playing
-                    ? 'Playing'
+                    ? 'Playing Game'
                     : editing
-                    ? 'Editing'
-                    : 'Selected'} '${localModel.name}'. Difficulty ${localModel.difficulty} (${localModel.difficultyMetrics})",
+                    ? 'Editing Game'
+                    : ''}. Difficulty ${localModel.difficulty} (${localModel.difficultyMetrics})",
+                  style: TextStyle(color: infoFGColor),
               )]),
-            ),
+            )),
           ],
         );
       },
@@ -431,11 +459,16 @@ class _SudokuBoardState extends State<SudokuBoard> {
           style: buttonStyle,
           child: Text("Save"),
         ),
+        ElevatedButton(
+          onPressed: scanGame,
+          style: buttonStyle,
+          child: Text(_bodyMode != SudokuBodyMode.displayCamera ? "Scan Game..." : "Back to Game"),
+        ),
         Divider(),
         ElevatedButton(
           onPressed: toggleHelp,
           style: buttonStyle,
-          child: Text(_helpPage ? "Back to Game" : "Help"),
+          child: Text(_bodyMode != SudokuBodyMode.displayHelp ? "Help" : "Back to Game"),
         ),
         ElevatedButton(
           onPressed: () => showSolution(model),
@@ -474,10 +507,26 @@ class _SudokuBoardState extends State<SudokuBoard> {
     ),
   );
 
+  Widget get body {
+    switch(_bodyMode) {
+      case .displayMatrix: return contentArea;
+      case .displayHelp: return helpArea;
+      case .displayCamera: return cameraArea;
+    }
+  }
+
+  String get title {
+    switch(_bodyMode) {
+      case .displayMatrix: return "Sudoku ${model == null ? '' : model?.name}";
+      case .displayHelp: return "How to Play";
+      case .displayCamera: return "Scan Sudoku from Paper";
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(widget.title)),
+    appBar: AppBar(title: Text(title)),
     endDrawer: drawer,
-    body: _helpPage ? helpArea : contentArea,
+    body: body,
   );
 }
