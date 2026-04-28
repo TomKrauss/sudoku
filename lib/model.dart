@@ -71,6 +71,8 @@ enum GameMode {
 /// - in solved mode the app calculates and displays a solved version of the game.
 ///
 class Game {
+  static final List<String> sampleGames = [/*"sudoku_easy.txt", "sudoku_hard.txt", "sudoku_medium.txt",*/ "sudoku_super160.txt"];
+  static final String sampleDirectory = "lib/assets/sample_games";
   final Matrix matrix;
   GameMode _mode = GameMode.playing;
   Matrix? _playingMatrix;
@@ -235,6 +237,7 @@ class Games {
   }
 
   final List<Game> games = [];
+  final Set<String> _gameNames = {};
   Stream<Game?> get current => _streamController.stream;
   final StreamController<Game?> _streamController = BehaviorSubject.seeded(Game(sample));
 
@@ -242,12 +245,20 @@ class Games {
   static bool _operationRunning = false;
 
   void addGame(Game game) {
-    if (games.contains(game)) {
+    if (game.name != null && games.contains(game)) {
       return;
     }
-    game.name ??= "Game ${DateTime.now().toIso8601String()}";
-    games.removeWhere(((g) => g.name == game.name));
+    if (game.name == null) {
+      var s = "Game #${games.length + 1}";
+      while(_gameNames.contains(s)) {
+        s += "_";
+      }
+      game.name = s;
+    } else {
+      games.removeWhere(((g) => g.name == game.name));
+    }
     games.add(game);
+    _gameNames.add(game.name!);
   }
 
   ///
@@ -286,6 +297,7 @@ class Games {
   Future<bool> initialize() async {
     await _initializePath();
     readHistory();
+    await readSampleGames();
     addGame(Game(sample));
     _streamController.add(games.last);
     return true;
@@ -306,7 +318,7 @@ class Games {
     }
   }
 
-  List<Matrix> decodeGames(String gamesEncodedAsJson) {
+  List<Matrix> decodeGamesFromJson(String gamesEncodedAsJson) {
     final contents = jsonDecode(gamesEncodedAsJson);
     final games = contents["games"];
     final result = <Matrix>[];
@@ -321,16 +333,70 @@ class Games {
     return result;
   }
 
-  void readHistory() {
-    final file = File(historyFile);
+  List<Matrix> decodeGamesFromText(String gamesEncodedAsTxt) {
+    final result = <Matrix>[];
+    for (final g in gamesEncodedAsTxt.split(Platform.lineTerminator)) {
+      if (g.isEmpty || g.startsWith("# ")) {
+        continue;
+      }
+      var m = Matrix.parse(g);
+      result.add(m);
+    }
+    return result;
+  }
+
+  void importFileOrAsset(String string, String fileName, {int? maxGamesPerFile, String? Function(int index)? generateName}) {
+    var games = extension(fileName) == '.txt' ? decodeGamesFromText(string) : decodeGamesFromJson(string);
+    logger.i("Reading file $fileName with ${maxGamesPerFile ?? games.length} saved games.");
+    var idx = 1;
+    for (final game in games) {
+      if (game.name == null && generateName != null) {
+        game.name = generateName(idx);
+      }
+      addGame(Game(game));
+      idx++;
+      if (maxGamesPerFile != null && idx >= maxGamesPerFile) {
+        break;
+      }
+    }
+  }
+
+  ///
+  /// Import multiple games from a Sudoku format input file located in the assets folder. Several formats are supported - simple
+  /// txt format with each line containing a sudoku game or JSON formats.
+  ///
+  Future<void> loadGamesFromAsset(String fileName, {int? maxGamesPerFile}) async {
+    try {
+      var buffer = await rootBundle.load(fileName);
+      var string = maxGamesPerFile != null && buffer.buffer.lengthInBytes > 100 * maxGamesPerFile ?
+          utf8.decode(Uint8List.sublistView(buffer, 100 * maxGamesPerFile)) : utf8.decode(Uint8List.sublistView(buffer));
+      importFileOrAsset(string, fileName, maxGamesPerFile: maxGamesPerFile, generateName: (idx) => "${withoutExtension(basename(fileName))}, Game  #$idx");
+    } catch(ex) {
+      logger.i("No asset named $fileName found: $ex");
+    }
+  }
+
+  ///
+  /// Import multiple games from a Sudoku format input file. Several formats are supported - simple
+  /// txt format with each line containing a sudoku game or JSON formats.
+  ///
+  void importGamesFromFile(String fileName, {int? maxGamesPerFile}) {
+    final file = File(fileName);
     if (!file.existsSync()) {
-      logger.i("No history file found. Was looking in ${file.absolute.path}");
+      logger.i("No file named $fileName found. Was looking in ${file.absolute.path}");
       return;
     }
-    var games = decodeGames(file.readAsStringSync());
-    logger.i("Reading history file ${file.absolute.path} with ${games.length} saved games.");
-    for (final game in games) {
-      addGame(Game(game));
+    var string = file.readAsStringSync();
+    importFileOrAsset(string, file.absolute.path, maxGamesPerFile: maxGamesPerFile);
+  }
+
+  void readHistory() {
+    importGamesFromFile(historyFile);
+  }
+
+  Future<void> readSampleGames() async {
+    for (final f in Game.sampleGames) {
+      await loadGamesFromAsset("${Game.sampleDirectory}/$f", maxGamesPerFile: 100);
     }
   }
 

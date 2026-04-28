@@ -12,6 +12,7 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
 import 'package:sudoku/model.dart';
 
 ///
@@ -423,7 +424,7 @@ class Matrix {
 
 
   ///
-  /// Parse a string defining a Sudoku game with empty cells containing a placeholder character such as X or _
+  /// Parse a string defining a Sudoku game with empty cells containing a placeholder character such as X or _ or 0
   /// and with other cells defining the number all separated by spaces.
   ///
   /// Example string which can be parsed to a matrix:
@@ -437,8 +438,13 @@ class Matrix {
   ///           "9 8 _ _ _ _ _ _ 5 "
   ///           "_ _ 1 _ 6 5 _ _ 4 "
   ///
+  /// Other popular formats (such as omitting the space between the cells) are also supported.
+  ///
   Matrix.parse(String s, {int? size}) {
     var tokens = s.split(RegExp("\\s+"));
+    if (tokens.length == 1) {
+      tokens = s.split("");
+    }
     size ??= sqrt(tokens.length).round();
     if (tokens.length < size*size) {
       throw Exception("Invalid number of tokens in matrix definition ${tokens.length}");
@@ -448,7 +454,7 @@ class Matrix {
       for (int j = 0; j < size; j++) {
         int idx = i * size + j;
         var cell = tokens[idx];
-        var value = (cell == '_' || cell == 'X') ? null : int.tryParse(cell);
+        var value = (cell == '_' || cell == 'X' || cell == '0') ? null : int.tryParse(cell);
         cells[i][j].value = value;
       }
     }

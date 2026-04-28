@@ -131,6 +131,22 @@ x x x 1 x x x x x""");
       expect(m.valueAt(8, 8), 4);
       expect(m.difficultyMetrics, 37);
       expect(m.difficulty, 7);
+      m = Matrix.parse(
+          "___83____"
+          "____74_5_"
+          "_________"
+          "_04__6__8"
+          "2___8___9"
+          "_6_1_24__"
+          "__57__9_3"
+          "98______5"
+          "__1_65__4"
+      );
+      expect(m.valueAt(1, 4), 7);
+      expect(m.valueAt(7, 0), 9);
+      expect(m.valueAt(8, 8), 4);
+      expect(m.difficultyMetrics, 37);
+      expect(m.difficulty, 7);
       // Unsolvable matrix
       var m21 = Matrix.parse(
           "_ _ _ 8 3 _ _ _ _ "
@@ -235,7 +251,7 @@ x x x 1 x x x x x""");
       var m = (await games.current.first)?.matrix;
       m!.setValue(CellPosition(), 1);
       var encoded = games.asJson();
-      var list = games.decodeGames(encoded);
+      var list = games.decodeGamesFromJson(encoded);
       expect(list.length, 1);
       expect(list[0].name, "test");
     });
