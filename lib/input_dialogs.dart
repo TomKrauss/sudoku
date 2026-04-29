@@ -242,16 +242,25 @@ class GameSelectorWidget extends StatefulWidget {
 
 class _GameSelectorWidgetState extends State<GameSelectorWidget> {
   final games = Games();
-  GlobalKey selectionKey = GlobalKey(debugLabel: "selection");
+  final ScrollController scrollController = ScrollController();
   String? get selection => widget.value.value;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((x) {
-      var ctx = selectionKey.currentContext;
-      if (ctx != null) {
-        Scrollable.ensureVisible(ctx);
+    WidgetsBinding.instance.addPostFrameCallback((x) async {
+      await WidgetsBinding.instance.endOfFrame;
+      if (games.games.isEmpty) {
+        return;
+      }
+      var maximum = scrollController.position.maxScrollExtent;
+      var nGames = games.numberOfGames;
+      var idx = games.games.indexWhere((g) => g.name == selection);
+      if (idx >= 0) {
+        var pos = idx >= nGames-1 ? maximum : ((maximum + scrollController.position.extentInside) / nGames * idx);
+        pos = max(0, pos);
+        pos = min(pos, maximum);
+        scrollController.jumpTo(pos);
       }
     });
   }
@@ -265,9 +274,11 @@ class _GameSelectorWidgetState extends State<GameSelectorWidget> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Flexible(
+          child: Scrollbar(
+          controller: scrollController,
           child: ListView(
+            controller: scrollController,
             children: games.games.map((g) => ListTile(
-                key: g.name == selection ? selectionKey : null,
                 title: Text(g.name ?? ""),
                 selected: g.name == selection,
                 selectedTileColor: Theme.of(context).colorScheme.primary,
@@ -277,7 +288,7 @@ class _GameSelectorWidgetState extends State<GameSelectorWidget> {
                 }),
               )
           ).toList(),
-        )),
+        ))),
       ],
     ),
   );
