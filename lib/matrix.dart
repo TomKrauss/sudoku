@@ -124,7 +124,6 @@ enum Difficulty {
 ///
 class Matrix {
   static const int defaultSize = 9;
-  String? name;
   List<List<Cell>> cells = [];
 
   final List<VoidCallback> _notifiers = [];
@@ -258,17 +257,15 @@ class Matrix {
   }
 
   static Matrix? fromJson(Map<String, dynamic> json) {
-    var name = json["name"];
     var cells = json["cells"];
     if (cells is String) {
-      return Matrix.parse(cells)..name = name;
+      return Matrix.parse(cells);
     }
     if (cells is! List) {
       return null;
     }
     var input = List<List<dynamic>>.from(cells);
     var result = Matrix.empty(size: input.length);
-    result.name = name;
     result.place(input.map(List<int?>.from).toList());
     result.markGivenCells();
     return result;
@@ -527,11 +524,10 @@ class Matrix {
     _addCells(size, columnBreaks: columnBreaks, rowBreaks: rowBreaks);
   }
 
-  static Matrix from(List<dynamic> init, {String? name}) {
+  static Matrix from(List<dynamic> init) {
     var result = Matrix.empty(size: init.length);
     var list = init.map((l) => List<int?>.from(l)).toList();
     result.place(list);
-    result.name = name;
     result.markGivenCells();
     return result;
   }
@@ -688,7 +684,6 @@ class Matrix {
   }
 
   Map<String, dynamic> asJson() => {
-    "name": name,
     "cells": cells
         .map((row) => row.map((cell) => cell.value).toList())
         .toList(),
@@ -1146,7 +1141,6 @@ class Matrix {
       _stepsToSolveGame++;
       var done = m!._solve(level + 1);
       if (done != null) {
-        done.name = name;
         return done;
       }
       if (bailedOut) {

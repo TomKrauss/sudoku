@@ -415,11 +415,11 @@ class _SudokuBoardState extends State<SudokuBoard> {
                 Icon(playing ? Icons.games_outlined : Icons.edit, color: infoFGColor,),
                 SizedBox(width: 10),
                 Text(
-                "${playing
+                "${playing || localModel.gameMode == GameMode.solved
                     ? 'Playing Game'
                     : editing
                     ? 'Editing Game'
-                    : ''}. Difficulty ${localModel.difficulty} (${localModel.difficultyMetrics})",
+                    : ''} '${localModel.name}'. Difficulty ${localModel.difficulty} (${localModel.difficultyMetrics})",
                   style: TextStyle(color: infoFGColor),
               )]),
             )),
@@ -519,7 +519,7 @@ class _SudokuBoardState extends State<SudokuBoard> {
 
   String get title {
     switch(_bodyMode) {
-      case .displayMatrix: return "Sudoku ${model == null ? '' : model?.name}";
+      case .displayMatrix: return "Sudoku";
       case .displayHelp: return "How to Play";
       case .displayCamera: return "Scan Sudoku from Paper";
     }

@@ -251,7 +251,7 @@ x x x 1 x x x x x""");
       var m = (await games.current.first)?.matrix;
       m!.setValue(CellPosition(), 1);
       var encoded = games.asJson();
-      var list = games.decodeGamesFromJson(encoded);
+      var list = GamesModel.fromJson(encoded).games;
       expect(list.length, 1);
       expect(list[0].name, "test");
     });

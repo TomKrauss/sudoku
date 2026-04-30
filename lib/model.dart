@@ -71,16 +71,40 @@ enum GameMode {
 /// - in solved mode the app calculates and displays a solved version of the game.
 ///
 class Game {
-  static final List<String> sampleGames = [/*"sudoku_easy.txt", "sudoku_hard.txt", "sudoku_medium.txt",*/ "sudoku_super160.txt"];
+  static final List<String> sampleGames = ["Easy Sudokus.txt", "Medium Sudokus.txt", "Hard Sudokus.txt", "Super160 Sudokus.txt"];
   static final String sampleDirectory = "lib/assets/sample_games";
   final Matrix matrix;
+  ///
+  /// Whether this game has been successfully completed before.
+  ///
+  bool played = false;
   GameMode _mode = GameMode.playing;
   Matrix? _playingMatrix;
   Matrix? _solvedMatrix;
 
-  String? get name => matrix.name;
+  String? name;
 
-  set name(String? n) => matrix.name = n;
+  static Game? fromJson(Map<String, dynamic> json) {
+    var m = Matrix.fromJson(json);
+    if (m != null) {
+      var game = Game(m);
+      game.name = json["name"];
+      game.played = json["played"] ?? false;
+      game.gameMode = json["mode"] != null ? GameMode.values.byName(json["mode"]) : GameMode.playing;
+      return game;
+    }
+    return null;
+  }
+
+  ///
+  /// Same a game as JSON data structure.
+  ///
+  Map<String, dynamic> asJson() => {
+    "cells": matrix.asJson()["cells"],
+    "name": name,
+    "mode": _mode.name,
+    "played": played
+  };
 
   set dirty(bool dirty) => matrix.dirty = dirty;
 
@@ -162,8 +186,6 @@ class Game {
   @override
   bool operator ==(Object other) => other is Game && matrix == other.matrix;
 
-  Map<String, dynamic> asJson() => matrix.asJson();
-
   Matrix get currentNotNull => current ?? matrix;
 
   int get difficultyMetrics => matrix.difficultyMetrics;
@@ -199,13 +221,99 @@ class Game {
 }
 
 ///
+/// Represents a model of games including a current game etc...
+///
+class GamesModel {
+  final List<Game> games;
+  final Set<String> _gameNames = {};
+  Stream<Game?> get current => _streamController.stream;
+  final StreamController<Game?> _streamController = BehaviorSubject();
+  String? _currentGameName;
+
+  GamesModel({required this.games, String? currentGameName}) : _currentGameName = currentGameName;
+
+  ///
+  /// Returns the number of games in this model.
+  ///
+  int get numberOfGames => games.length;
+
+  void addGame(Game game) {
+    if (game.name != null && games.contains(game)) {
+      return;
+    }
+    if (game.name == null) {
+      var s = "Game #${games.length + 1}";
+      while(_gameNames.contains(s)) {
+        s += "_";
+      }
+      game.name = s;
+    } else {
+      games.removeWhere(((g) => g.name == game.name));
+    }
+    games.add(game);
+    _gameNames.add(game.name!);
+  }
+
+  ///
+  /// Clear the list of saved games
+  ///
+  void clear() {
+    games.clear();
+  }
+
+  ///
+  /// Select a game given its name and mae it the current game. A game with the given name must exist or
+  /// an exception is thrown.
+  ///
+  Future<Game?> selectGameNamed(String name) async {
+    if (name == _currentGameName) {
+      return await current.first;
+    }
+    var m = games.where((g) => g.name == name).firstOrNull;
+    if (m != null) {
+      _currentGameName = name;
+      _streamController.add(m);
+      return m;
+    }
+    return null;
+  }
+
+  String asJson() {
+    final output = {
+      "games": games.map((g) => g.asJson()).toList(),
+      "current": _currentGameName
+    };
+    var encoder = JsonEncoder.withIndent('  ');
+    return encoder.convert(output);
+  }
+
+  ///
+  /// Decode games stored in a JSON file and return a game model.
+  ///
+  static GamesModel fromJson(String gamesEncodedAsJson) {
+    final contents = jsonDecode(gamesEncodedAsJson);
+    final games = contents["games"];
+    final result = <Game>[];
+    if (games is List) {
+      for (final jsonMap in games) {
+        var game = Game.fromJson(jsonMap);
+        if (game != null) {
+          result.add(game);
+        }
+      }
+    }
+    return GamesModel(games: result, currentGameName: contents["current"]);
+  }
+}
+
+///
 /// The games defined in our Sudoku application.
 ///
-class Games {
+class Games extends GamesModel {
   static Logger logger = Logger(
     printer: PrettyPrinter(stackTraceBeginIndex: 10000),
   );
-  Games._();
+  Games._() : super(games: []);
 
   static final Games _singleton = Games._();
   static final Matrix sample = Matrix.from([
@@ -236,30 +344,7 @@ class Games {
     historyFile = name;
   }
 
-  final List<Game> games = [];
-  final Set<String> _gameNames = {};
-  Stream<Game?> get current => _streamController.stream;
-  final StreamController<Game?> _streamController = BehaviorSubject.seeded(Game(sample));
-
-  int get numberOfGames => games.length;
   static bool _operationRunning = false;
-
-  void addGame(Game game) {
-    if (game.name != null && games.contains(game)) {
-      return;
-    }
-    if (game.name == null) {
-      var s = "Game #${games.length + 1}";
-      while(_gameNames.contains(s)) {
-        s += "_";
-      }
-      game.name = s;
-    } else {
-      games.removeWhere(((g) => g.name == game.name));
-    }
-    games.add(game);
-    _gameNames.add(game.name!);
-  }
 
   ///
   /// Generate a new game with the given name and size. Size defaults to 9.
@@ -296,17 +381,17 @@ class Games {
 
   Future<bool> initialize() async {
     await _initializePath();
-    readHistory();
+    var model = readHistory();
     await readSampleGames();
-    addGame(Game(sample));
-    _streamController.add(games.last);
+    if (games.isEmpty) {
+      addGame(Game(sample));
+    }
+    var currentGame = model?._currentGameName;
+    currentGame ??= games.last.name;
+    if (currentGame != null) {
+      await selectGameNamed(currentGame);
+    }
     return true;
-  }
-
-  String asJson() {
-    final output = {"games": games.map((g) => g.asJson()).toList()};
-    var encoder = JsonEncoder.withIndent('  ');
-    return encoder.convert(output);
   }
 
   void save() {
@@ -318,47 +403,43 @@ class Games {
     }
   }
 
-  List<Matrix> decodeGamesFromJson(String gamesEncodedAsJson) {
-    final contents = jsonDecode(gamesEncodedAsJson);
-    final games = contents["games"];
-    final result = <Matrix>[];
-    if (games is List) {
-      for (final g in games) {
-        var m = Matrix.fromJson(g);
-        if (m != null) {
-          result.add(m);
-        }
-      }
-    }
-    return result;
-  }
-
-  List<Matrix> decodeGamesFromText(String gamesEncodedAsTxt) {
-    final result = <Matrix>[];
+  List<Game> decodeGamesFromText(String gamesEncodedAsTxt) {
+    final result = <Game>[];
     for (final g in gamesEncodedAsTxt.split(Platform.lineTerminator)) {
       if (g.isEmpty || g.startsWith("# ")) {
         continue;
       }
       var m = Matrix.parse(g);
-      result.add(m);
+      result.add(Game(m));
     }
     return result;
   }
 
-  void importFileOrAsset(String string, String fileName, {int? maxGamesPerFile, String? Function(int index)? generateName}) {
-    var games = extension(fileName) == '.txt' ? decodeGamesFromText(string) : decodeGamesFromJson(string);
+  ///
+  /// Import a file of asset containing games or a saved game model.
+  ///
+  GamesModel? importFileOrAsset(String string, String fileName, {int? maxGamesPerFile, String? Function(int index)? generateName}) {
+    List<Game> games;
+    GamesModel? model;
+    if (extension(fileName) == '.txt') {
+      games = decodeGamesFromText(string);
+    } else {
+      model = GamesModel.fromJson(string);
+      games = model.games;
+    }
     logger.i("Reading file $fileName with ${maxGamesPerFile ?? games.length} saved games.");
     var idx = 1;
     for (final game in games) {
       if (game.name == null && generateName != null) {
         game.name = generateName(idx);
       }
-      addGame(Game(game));
+      addGame(game);
       idx++;
       if (maxGamesPerFile != null && idx >= maxGamesPerFile) {
         break;
       }
     }
+    return model;
   }
 
   ///
@@ -380,19 +461,17 @@ class Games {
   /// Import multiple games from a Sudoku format input file. Several formats are supported - simple
   /// txt format with each line containing a sudoku game or JSON formats.
   ///
-  void importGamesFromFile(String fileName, {int? maxGamesPerFile}) {
+  GamesModel? importGamesFromFile(String fileName, {int? maxGamesPerFile}) {
     final file = File(fileName);
     if (!file.existsSync()) {
       logger.i("No file named $fileName found. Was looking in ${file.absolute.path}");
-      return;
+      return null;
     }
     var string = file.readAsStringSync();
-    importFileOrAsset(string, file.absolute.path, maxGamesPerFile: maxGamesPerFile);
+    return importFileOrAsset(string, file.absolute.path, maxGamesPerFile: maxGamesPerFile);
   }
 
-  void readHistory() {
-    importGamesFromFile(historyFile);
-  }
+  GamesModel? readHistory() => importGamesFromFile(historyFile);
 
   Future<void> readSampleGames() async {
     for (final f in Game.sampleGames) {
@@ -405,31 +484,11 @@ class Games {
   ///
   void newGame({String? name, int? size}) {
     var m = Matrix.empty(size: size);
-    m.name = name;
     var game = Game(m);
+    game.name = name;
     addGame(game);
     game.gameMode = GameMode.creating;
     _streamController.add(game);
-  }
-
-  ///
-  /// Clear the list of saved games
-  ///
-  void clear() {
-    games.clear();
-  }
-
-  ///
-  /// Select a game given its name and mae it the current game. A game with the given name must exist or
-  /// an exception is thrown.
-  ///
-  Future<Game?> selectGameNamed(String name) async {
-    var m = games.where((g) => g.name == name).firstOrNull;
-    if (m != null && m != await current.first) {
-      _streamController.add(m);
-      return m;
-    }
-    return null;
   }
 
   void useSample() {
