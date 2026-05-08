@@ -10,7 +10,6 @@
 // THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:sudoku/model.dart';
@@ -674,14 +673,26 @@ class Matrix {
     recalculateAlternatives();
   }
 
+  ///
+  /// Fast local access of cell value
+  ///
+  @protected
   int? valueAt(int row, int col) => cells[row][col].value;
 
   ///
   /// Assign [val] to the cell in [row] and [col].
   ///
   void setValue(CellPosition p, int? val) {
+    if (val != null) {
+      var max = gridSize;
+      if (val < 1 || val > max) {
+        throw Exception("Value must be within range 1 to $max.");
+      }
+    }
     cells[p.row][p.column].value = val;
   }
+
+  int? getValue(CellPosition p) => getCell(p).value;
 
   Map<String, dynamic> asJson() => {
     "cells": cells
@@ -1221,5 +1232,12 @@ class Matrix {
       cells.map((row) => row.map((c) => "${c.value ?? 'x'} ").join("")).join("\n");
 
   Cell getCell(CellPosition cellPosition) => cells[cellPosition.row][cellPosition.column];
+
+  void clearValue(CellPosition position) {
+    var c = getCell(position);
+    c.value = null;
+    c.solved = false;
+    c._hasError = false;
+  }
 
 }

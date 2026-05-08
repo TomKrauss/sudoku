@@ -126,9 +126,9 @@ x x x 1 x x x x x""");
           "9 8 _ _ _ _ _ _ 5 "
           "_ _ 1 _ 6 5 _ _ 4 "
       );
-      expect(m.valueAt(1, 4), 7);
-      expect(m.valueAt(7, 0), 9);
-      expect(m.valueAt(8, 8), 4);
+      expect(m.getValue(CellPosition(row: 1, column: 4)), 7);
+      expect(m.getValue(CellPosition(row: 7, column: 0)), 9);
+      expect(m.getValue(CellPosition(row: 8, column: 8)), 4);
       expect(m.difficultyMetrics, 37);
       expect(m.difficulty, 7);
       m = Matrix.parse(
@@ -142,9 +142,9 @@ x x x 1 x x x x x""");
           "98______5"
           "__1_65__4"
       );
-      expect(m.valueAt(1, 4), 7);
-      expect(m.valueAt(7, 0), 9);
-      expect(m.valueAt(8, 8), 4);
+      expect(m.getValue(CellPosition(row: 1, column: 4)), 7);
+      expect(m.getValue(CellPosition(row: 7, column: 0)), 9);
+      expect(m.getValue(CellPosition(row: 8, column: 8)), 4);
       expect(m.difficultyMetrics, 37);
       expect(m.difficulty, 7);
       // Unsolvable matrix
@@ -243,6 +243,232 @@ x x x 1 x x x x x""");
       expect(m.checkValid, isFalse);
     });
   });
+  group('Matrix.empty', () {
+    test('creates an empty 9x9 matrix by default', () {
+      final matrix = Matrix.empty();
+
+      expect(matrix.gridSize, 9);
+
+      for (var row = 0; row < matrix.gridSize; row++) {
+        for (var column = 0; column < matrix.gridSize; column++) {
+          final position = CellPosition(row: row, column: column);
+
+          expect(matrix.getValue(position), isNull);
+        }
+      }
+    });
+
+    test('creates an empty matrix with a custom size', () {
+      final matrix = Matrix.empty(size: 4);
+
+      expect(matrix.gridSize, 4);
+
+      for (var row = 0; row < matrix.gridSize; row++) {
+        for (var column = 0; column < matrix.gridSize; column++) {
+          final position = CellPosition(row: row, column: column);
+
+          expect(matrix.getValue(position), isNull);
+        }
+      }
+    });
+  });
+
+  group('Matrix.setValue', () {
+    test('sets a value at the given position', () {
+      final matrix = Matrix.empty();
+      final position = CellPosition(row: 0, column: 0);
+
+      matrix.setValue(position, 5);
+
+      expect(matrix.getValue(position), 5);
+    });
+
+    test('overwrites an existing value', () {
+      final matrix = Matrix.empty();
+      final position = CellPosition(row: 2, column: 3);
+
+      matrix.setValue(position, 4);
+      matrix.setValue(position, 9);
+
+      expect(matrix.getValue(position), 9);
+    });
+
+    test('can set values in different cells independently', () {
+      final matrix = Matrix.empty();
+
+      final first = CellPosition(row: 0, column: 0);
+      final second = CellPosition(row: 8, column: 8);
+
+      matrix.setValue(first, 1);
+      matrix.setValue(second, 9);
+
+      expect(matrix.getValue(first), 1);
+      expect(matrix.getValue(second), 9);
+    });
+  });
+
+  group('Matrix.clearValue', () {
+    test('clears a value at the given position', () {
+      final matrix = Matrix.empty();
+      final position = CellPosition(row: 1, column: 1);
+
+      matrix.setValue(position, 7);
+      expect(matrix.getValue(position), 7);
+
+      matrix.clearValue(position);
+
+      expect(matrix.getValue(position), isNull);
+    });
+
+    test('clearing an empty cell keeps it empty', () {
+      final matrix = Matrix.empty();
+      final position = CellPosition(row: 3, column: 3);
+
+      matrix.clearValue(position);
+
+      expect(matrix.getValue(position), isNull);
+    });
+  });
+
+  group('Matrix bounds', () {
+    test('throws when setting a value outside row bounds', () {
+      final matrix = Matrix.empty();
+
+      expect(
+            () => matrix.setValue(CellPosition(row: -1, column: 0), 1),
+        throwsA(isA<RangeError>()),
+      );
+
+      expect(
+            () => matrix.setValue(CellPosition(row: 9, column: 0), 1),
+        throwsA(isA<RangeError>()),
+      );
+    });
+
+    test('throws when setting a value outside column bounds', () {
+      final matrix = Matrix.empty();
+
+      expect(
+            () => matrix.setValue(CellPosition(row: 0, column: -1), 1),
+        throwsA(isA<RangeError>()),
+      );
+
+      expect(
+            () => matrix.setValue(CellPosition(row: 0, column: 9), 1),
+        throwsA(isA<RangeError>()),
+      );
+    });
+
+    test('throws when reading a value outside bounds', () {
+      final matrix = Matrix.empty();
+
+      expect(
+            () => matrix.getValue(CellPosition(row: -1, column: 0)),
+        throwsA(isA<RangeError>()),
+      );
+
+      expect(
+            () => matrix.getValue(CellPosition(row: 0, column: 9)),
+        throwsA(isA<RangeError>()),
+      );
+    });
+  });
+
+  group('Matrix value validation', () {
+    test('accepts values between 1 and gridSize', () {
+      final matrix = Matrix.empty(size: 9);
+
+      for (var value = 1; value <= 9; value++) {
+        final position = CellPosition(row: 0, column: value - 1);
+
+        matrix.setValue(position, value);
+
+        expect(matrix.getValue(position), value);
+      }
+    });
+
+    test('throws when value is below valid range', () {
+      final matrix = Matrix.empty();
+
+      expect(
+            () => matrix.setValue(CellPosition(row: 0, column: 0), 0),
+        throwsA(anything),
+      );
+    });
+
+    test('throws when value is above valid range', () {
+      final matrix = Matrix.empty(size: 9);
+
+      expect(
+            () => matrix.setValue(CellPosition(row: 0, column: 0), 10),
+        throwsA(anything),
+      );
+    });
+  });
+
+  group('Matrix copy behavior', () {
+    test('copy creates an independent matrix', () {
+      final original = Matrix.empty();
+      final position = CellPosition(row: 0, column: 0);
+
+      original.setValue(position, 3);
+
+      final copy = Matrix.clone(original);
+
+      expect(copy.gridSize, original.gridSize);
+      expect(copy.getValue(position), 3);
+
+      copy.setValue(position, 8);
+
+      expect(copy.getValue(position), 8);
+      expect(original.getValue(position), 3);
+    });
+  });
+
+  group('Matrix equality', () {
+    test('two empty matrices with the same size are equal', () {
+      final first = Matrix.empty(size: 9);
+      final second = Matrix.empty(size: 9);
+
+      expect(first, equals(second));
+    });
+
+    test('matrices with different values are not equal', () {
+      final first = Matrix.empty(size: 9);
+      final second = Matrix.empty(size: 9);
+
+      first.setValue(CellPosition(row: 0, column: 0), 1);
+      second.setValue(CellPosition(row: 0, column: 0), 2);
+
+      expect(first, isNot(equals(second)));
+    });
+
+    test('matrices with different sizes are not equal', () {
+      final first = Matrix.empty(size: 4);
+      final second = Matrix.empty(size: 9);
+
+      expect(first, isNot(equals(second)));
+    });
+  });
+
+  group('Matrix serialization', () {
+    test('converts matrix to json and back', () {
+      final matrix = Matrix.empty(size: 9);
+
+      matrix.setValue(CellPosition(row: 0, column: 0), 1);
+      matrix.setValue(CellPosition(row: 4, column: 4), 5);
+      matrix.setValue(CellPosition(row: 8, column: 8), 9);
+
+      final json = matrix.asJson();
+      final restored = Matrix.fromJson(json);
+
+      expect(restored?.gridSize, matrix.gridSize);
+      expect(restored?.getValue(CellPosition(row: 0, column: 0)), 1);
+      expect(restored?.getValue(CellPosition(row: 4, column: 4)), 5);
+      expect(restored?.getValue(CellPosition(row: 8, column: 8)), 9);
+      expect(restored, equals(matrix));
+    });
+  });
   group("Games Tests", () {
     test("JSON Encoding", () async {
       final games = Games();
@@ -251,10 +477,11 @@ x x x 1 x x x x x""");
       var m = (await games.current.first)?.matrix;
       m!.setValue(CellPosition(), 1);
       var encoded = games.asJson();
-      var list = GamesModel.fromJson(encoded).games;
+      var list = GamesModel
+          .fromJson(encoded)
+          .games;
       expect(list.length, 1);
       expect(list[0].name, "test");
     });
-
   });
 }
