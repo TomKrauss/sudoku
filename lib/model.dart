@@ -405,11 +405,16 @@ class Games extends GamesModel {
 
   List<Game> decodeGamesFromText(String gamesEncodedAsTxt) {
     final result = <Game>[];
-    for (final g in gamesEncodedAsTxt.split(Platform.lineTerminator)) {
+    var lnTerm = RegExp("[\n\r]");
+    for (final g in gamesEncodedAsTxt.split(lnTerm)) {
       if (g.isEmpty || g.startsWith("# ")) {
         continue;
       }
       var m = Matrix.parse(g);
+      if (m.gridSize < 9 && g.contains(RegExp("[${m.gridSize+1}-9]"))) {
+        logger.e("Illegal text Sudoku Definition detected: $g");
+        continue;
+      }
       result.add(Game(m));
     }
     return result;
@@ -450,7 +455,7 @@ class Games extends GamesModel {
     try {
       var buffer = await rootBundle.load(fileName);
       var string = maxGamesPerFile != null && buffer.buffer.lengthInBytes > 100 * maxGamesPerFile ?
-          utf8.decode(Uint8List.sublistView(buffer, 100 * maxGamesPerFile)) : utf8.decode(Uint8List.sublistView(buffer));
+          utf8.decode(Uint8List.sublistView(buffer, 0, 100 * maxGamesPerFile)) : utf8.decode(Uint8List.sublistView(buffer));
       importFileOrAsset(string, fileName, maxGamesPerFile: maxGamesPerFile, generateName: (idx) => "${withoutExtension(basename(fileName))}, Game  #$idx");
     } catch(ex) {
       logger.i("No asset named $fileName found: $ex");
@@ -475,7 +480,7 @@ class Games extends GamesModel {
 
   Future<void> readSampleGames() async {
     for (final f in Game.sampleGames) {
-      await loadGamesFromAsset("${Game.sampleDirectory}/$f", maxGamesPerFile: 100);
+      await loadGamesFromAsset("${Game.sampleDirectory}/$f", maxGamesPerFile: 200);
     }
   }
 
