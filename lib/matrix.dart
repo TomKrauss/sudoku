@@ -361,7 +361,7 @@ class Matrix {
     var total = gridSize;
     for (var row = 0; row < total; row++) {
       for (var col = 0; col < total; col++) {
-        if (cells[row][col].value == null) {
+        if (valueAt(row, col) == null) {
           return (row: row, col: col);
         }
       }
@@ -381,7 +381,7 @@ class Matrix {
     if (!checkValid) {
       return null;
     }
-    rand ??= Random.secure();
+    rand ??= Random();
     var result = findNextEmpty();
     if (result == null) {
       return this;
@@ -401,7 +401,7 @@ class Matrix {
           return m2;
         }
       }
-      var result2 = m.autoPlaceNewValue();
+      var result2 = m.autoPlaceNewValue(rand: rand);
       if (result2 != null) {
         return result2;
       }
