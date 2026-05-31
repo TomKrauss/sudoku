@@ -200,8 +200,8 @@ class _SudokuBoardState extends State<SudokuBoard> {
   /// If [create] is true, this is done to define a game manually, if it
   /// is false, we start to solve the Sudoku manually.
   ///
-  void edit({bool create = false}) {
-    _pop();
+  Future<void> edit({bool create = false}) async {
+    await _pop();
     setState(() {
       model?.gameMode = create ? GameMode.creating : GameMode.playing;
     });
@@ -211,16 +211,16 @@ class _SudokuBoardState extends State<SudokuBoard> {
   ///
   /// Save the list of current games known
   ///
-  void save() {
-    _pop();
+  Future<void> save() async {
+    await _pop();
     games.save();
   }
 
   ///
   /// Display the help page or hide it.
   ///
-  void toggleHelp() {
-    _pop();
+  Future<void> toggleHelp() async {
+    await _pop();
     setState(() {
       if (_bodyMode != SudokuBodyMode.displayHelp) {
         _bodyMode = SudokuBodyMode.displayHelp;

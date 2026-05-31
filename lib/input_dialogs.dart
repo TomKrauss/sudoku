@@ -386,8 +386,8 @@ Future<String?> selectGame(
   final w = GameSelectorWidget(value: selection);
   if (context.mounted) {
     return showContentDialog(
-      title: title,
       context,
+      title: title,
       content: w,
       getValue: () => selection.value,
     );
@@ -407,8 +407,8 @@ Future<NewGameOptions?> selectNewGameOptions(
     generateGame: generateGame,
   );
   if (await showContentDialog(
-        title: title,
         context,
+        title: title,
         content: w,
         getValue: () => "OK",
       ) ==

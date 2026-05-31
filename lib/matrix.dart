@@ -300,9 +300,9 @@ class Matrix {
     });
     int retries = 0;
     // give up, if we did not succeed to generate a game after more than 5 retries to short-cut the recursive algorithm.
+    nonEmptySlots.shuffle(rand);
     while(nonEmptySlots.isNotEmpty && retries < 5) {
-      p = nonEmptySlots[rand.nextInt(nonEmptySlots.length)];
-      nonEmptySlots.remove(p);
+      p = nonEmptySlots.removeLast();
       var val = m.valueAt(p.row, p.column);
       if (val == null) {
         throw Exception("Did not move to empty slot ${p.column} ${p.row}");
@@ -359,19 +359,11 @@ class Matrix {
 
   ({int row, int col})? findNextEmpty() {
     var total = gridSize;
-    var row = 0;
-    var col = 0;
-    while(row < total) {
-      while(col < total) {
-        var cell = cells[row][col];
-        if (cell.value == null) {
+    for (var row = 0; row < total; row++) {
+      for (var col = 0; col < total; col++) {
+        if (cells[row][col].value == null) {
           return (row: row, col: col);
         }
-        col ++;
-      }
-      if (col >= total) {
-        row++;
-        col = 0;
       }
     }
     return null;
@@ -409,9 +401,9 @@ class Matrix {
           return m2;
         }
       }
-      var result = m.autoPlaceNewValue();
-      if (result != null) {
-        return result;
+      var result2 = m.autoPlaceNewValue();
+      if (result2 != null) {
+        return result2;
       }
       avail.removeAt(idx);
     }
