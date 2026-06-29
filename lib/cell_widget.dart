@@ -131,10 +131,14 @@ class CellWidgetState extends State<CellWidget> {
           alignment: Alignment.center,
           child:
           Stack(
+            alignment: Alignment.center,
             children:
           [?editWidget,
             if (cell.value == null || !editable) contentWidget,
-            if (cell.markedAsFound) Container(decoration: ShapeDecoration(shape: CircleBorder(side: BorderSide(width: 2.0))),)
+            if (cell.markedAsFound) Container(
+              width: cellSize-1.5,
+              height: cellSize-1.5,
+              decoration: ShapeDecoration(shape: CircleBorder(side: BorderSide(color: Colors.blueGrey, width: 2.0))),)
           ],
 
           )
