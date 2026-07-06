@@ -429,8 +429,13 @@ class Games extends GamesModel {
     if (extension(fileName) == '.txt') {
       games = decodeGamesFromText(string);
     } else {
-      model = GamesModel.fromJson(string);
-      games = model.games;
+      try {
+        model = GamesModel.fromJson(string);
+        games = model.games;
+      } catch(ex) {
+        logger.w("Cannot read games from file $fileName: $ex");
+        return null;
+      }
     }
     logger.i("Reading file $fileName with ${maxGamesPerFile ?? games.length} saved games.");
     var idx = 1;
